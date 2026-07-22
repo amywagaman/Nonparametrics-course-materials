@@ -1,0 +1,244 @@
+---
+title: "One Proportion - Lab Activity - Solution"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic)
+library(binom) # required for CIs
+```
+
+
+# Practice with the Binomial distribution
+
+a) Make a plot of the Binomial(45,0.4) distribution. 
+
+```{r}
+n <- 45 # set the number of trials
+p <- 0.4 # set the probability of success, 
+# P(X_i=1)=p for the underlying Bernoulli X_i's
+# multiple commands can work for this; this is just one example
+barplot(dbinom(0:n, n, p), names.arg = 0:n, 
+        main = "Binomial Distribution with n = 45 and p = 0.4") 
+```
+
+For the next three parts, let $X$ be a random variables such that $X$ is Bin(n = 10, p = 0.3). Use R code to find the following probabilities.
+
+b) P(X $\leq$ 4)
+
+```{r}
+# multiple ways to obtain the solution are shown
+pbinom(4, 10, 0.3)
+sum(dbinom(0:4, 10, 0.3))
+# alternative solutions using dbinom()
+dbinom(0, 10, 0.3) + dbinom(1, 10, 0.3) + dbinom(2, 10, 0.3) +
+  dbinom(3, 10, 0.3) + dbinom(4, 10, 0.3) 
+sum(dbinom(0:4, 10, 0.3)) 
+```
+
+c) P(X>1)
+
+```{r}
+1-pbinom(1, 10, 0.3)
+pbinom(1, 10, 0.3, lower.tail = FALSE) # alternative solution using lower.tail option
+1-dbinom(0, 10, 0.3)-dbinom(1, 10,.3)
+```
+
+d) P(X<3)
+
+```{r}
+pbinom(2, 10, 0.3)
+# alternative solution using dbinom()
+dbinom(0, 10, 0.3) + dbinom(1, 10, 0.3) + dbinom(2, 10, 0.3)
+sum(dbinom(0:2, 10, 0.3))
+```
+
+
+# Solving for sample size
+
+Suppose you wanted $\hat{p}$ to be within 0.10 of p with 98 percent confidence. What sample size is required to guarantee this?
+
+```{r}
+critical <- qnorm(.99)
+D <- 0.1
+n <- ((critical)^2)/(4*(D^2));n
+```
+
+We would round up to take a sample of size 136. 
+
+
+## Practice Problems in R
+
+Complete the following problems based on the provided data. Bear in mind you are allowed to perform parametric procedures if appropriate conditions check out, and this data set has a large sample size. 
+
+```{r}
+abalone <- 
+  read.table("https://awagaman.people.amherst.edu/nonparametricstats/abalone.txt",
+                      h = T, sep = ",")
+```
+
+This data set was stored as a comma-delimited text file, so we read it in as a table, and had to use the sep option to tell it about the commas. We will usually see read.table or read.csv commands to load data. 
+
+This data set contains information on 4177 abalones (sea snails). The variables included are:
+
+* Sex - M, F, and I (infant)
+* Length - mm - Longest shell measurement
+* Diameter - mm - perpendicular to length
+* Height - mm - with meat in shell
+* Whole weight - grams - whole abalone
+* Shucked weight - grams - weight of meat
+* Viscera weight - grams - gut weight
+* Shell weight - grams - after being dried
+* Rings - number of rings in the shell - 1.5+rings gives the age in years
+
+Note that the descriptions do not exactly match the variable names - whoever entered the data shortened the names somewhat. To see the names of variables in the data set, use:
+
+```{r}
+names(abalone)
+```
+
+Now, let's try to address some questions that researchers have about the sea snails. 
+
+### Question 1
+
+A policy maker wants to estimate the fraction of caught abalone that would be returned to the wild if the whole weight cutoff was set at 0.50 (abalones that do not meet the cutoff are returned to the wild to continue their life-cycle). Assist this policy maker with both a point estimate and confidence interval. 
+
+> SOLUTION:
+
+We proceeded to obtain point estimates and form 95% confidence intervals. 
+
+```{r}
+totalreturned <- sum(1*(abalone$Wholewt<0.5)); totalreturned
+phat <- totalreturned/4177; phat
+critical <- qnorm(0.975)
+ptilde <- (totalreturned + (critical^2)/2)/(4177 + critical^2); ptilde
+binom.confint(x = totalreturned, n = 4177, conf.level = 0.95, methods = "all")
+```
+
+The point estimates are similar and round the same to three decimal places.
+Similarly, the different CI options are all similar. Given the sample size, we might be comfortable using the asymptotic CI here, given as 0.283 to 0.310. 
+
+### Question 2
+
+For this question, we are going to look at the 20 smallest abalones in terms of Height.
+
+```{r}
+cutoff <- sort(abalone$Height)[20]+0.00000001
+
+# pulling value with tidyverse
+cutoff <- as.numeric(abalone %>%
+  arrange(Height) %>% slice(20) %>%
+  summarize(cutoff = Height + 0.00000001))
+```
+
+First, we identify the Height cutoff and add a little bit so we will include the 20th if we ask for heights < the cutoff. In the event of ties, we need to see how many observations we actually end up with. 
+
+```{r}
+abalone2 <- filter(abalone, Height < cutoff)
+dim(abalone2)
+```
+
+So, we are looking at just 24 abalones now, due to ties. 
+
+Among the smallest abalones, is there evidence that more than 75 percent are infants? 
+
+> SOLUTION:
+
+The hypothesis test can be performed using *binom.test* or by hand. Example solutions follow.
+
+```{r}
+numinfant <- sum(1*(abalone2$Sex == "I"))
+binom.test(numinfant, 24, p = 0.75, alternative = "greater")
+```
+
+Note, if considering the large sample approximation (the usual parametric competitor), n=24, and the hypothesized p=0.75, so if we check conditions, it may be ill-advised to proceed. The normal approximation may not be accurate because the number of successes and failures (respectively) are small. So, we will use our nonparametric test based on the binomial distribution.
+
+```{r}
+tally(~ Sex, data = abalone2)
+```
+
+We see 22 out of the 24 are infants. So, we find the p-value for our test of p=0.75 versus p>0.75 as:
+
+```{r}
+# 1-P(B<=21)=P(B>=22) when B is Bin(24,0.75); uses complement rule
+1-pbinom(21, 24, 0.75) 
+```
+
+It does appear that more than 75 percent are infants. 
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore, investigating the different types of confidence intervals for proportions.
+
+Use Google Scholar and do a search for "Wald confidence interval" (or another method covered) and an application area of interest to you. For example, search for '"wald interval" archaeology' to look for applications of the wald interval in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Andersson, Per Gosta, "The Wald confidence interval for a binomial p as an illuminating “bad” example," The American Statistician, 77.4, 2023: 443-448. (Advanced, theoretical article)
+
+McGrath, Owen, and Kevin Burke, "Binomial confidence intervals for rare events: importance of defining margin of error relative to magnitude of proportion," The American Statistician, 78.4, 2024: 437-449.
+
+Sauro, J., & Lewis, J. R., "Estimating Completion Rates from Small Samples Using Binomial Confidence Intervals: Comparisons and Recommendations," Proceedings of the Human Factors and Ergonomics Society Annual Meeting, 49(24), 2005: 2100-2103.
+
+Xu B, Feng X, and Burdine RD, "Categorical data analysis in experimental biology," Dev Biol. 348.1, 2010: 3-11. doi: 10.1016/j.ydbio.2010.08.018. Epub 2010 Sep 6. PMID: 20826130; PMCID: PMC3021327.
+
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Answers will vary.
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+Answers will vary.
+
+
+What was the nonparametric procedure used for in the article? Describe as best you can. For example, assuming a confidence interval was generated, what were they using it for?
+
+> SOLUTION:
+
+Answers will vary.
+
+
+Does the article state why the nonparametric procedure was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Answers will vary.
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+Answers will vary. 
+
+
+## Data Sources
+
+Nash, W., Sellers, T., Talbot, S., Cawthorn, A., & Ford, W. (1994). Abalone [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C55C7W.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

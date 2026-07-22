@@ -1,0 +1,528 @@
+---
+title: "One Proportion - Examples in R"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(binom) # required for CIs
+```
+
+We begin with examples of commands you might want working with the binomial distribution, since this is often the exact distribution used when working with proportions. 
+
+# Working with Binomial Distributions
+
+First, we want to be able to visualize the binomial distribution. This is achieved by plotting the probability mass function for possible values of the random variable - the probability of attaining each value of the random variable. 
+
+```{r}
+n <- 10 # set the number of trials
+p <- 0.5 # set the probability of success, P(X=1)=p for the underlying Bernoulli X's
+# multiple commands can work for this; this is just one example
+barplot(dbinom(0:n, n, p), names.arg = 0:n, 
+        main = "Binomial Distribution with n = 10 and p = 0.5") 
+```
+
+Now, let's consider some useful commands for binomial distributions. There are four primary functions that will be helpful for computing probabilities or finding quantiles. Those commands are described as follows, for a random variable $X$:
+
+```{r}
+k <- 3 # pick a particular number of successes of interest
+dbinom(k, n, p) # computes P(X=k) when X is Bin(n,p)
+pbinom(k, n, p) # computes P(X<=k) when X is Bin(n,p) - cumulative probability
+rbinom(k, n, p) # generates k observations from a Bin(n,p) distribution
+a <- 0.80 # pick a particular probability
+qbinom(a, n, p) # computes a quantile from the distribution; finds k such that P(X<=k)=a
+```
+
+Example computations:
+
+Suppose $X$ is a random variable with a Binomial distribution with $n=8$ and $p=0.6$. 
+
+To find $P(X=3)$, we use
+
+```{r}
+dbinom(3, 8, 0.6)
+```
+
+To find $P(X \leq 4)$, we use
+
+```{r}
+pbinom(4, 8, 0.6)
+```
+
+If we want to see the most common value of $X$ from this distribution, we can output all of the probabilities like this:
+
+```{r}
+dbinom(0:8, 8, 0.6)
+```
+
+The values of $X$ range from 0 to 8, so we see $X=5$ is the most common value. 
+
+Finally, if we wanted to see what the 95th percentile (upper 5%) cutoff of the distribution is, we would use
+
+```{r}
+qbinom(0.95, 8, 0.6)
+```
+
+From the distribution printed above, we can see that 7 is the correct value as well. Note the discrete nature of the distribution means 7 satisfies the cutoff criteria for multiple quantile values.
+
+```{r}
+qbinom(0.9, 8, 0.6)
+```
+
+Some textbooks spend a considerable amount of time talking about how to use tables. We do not use tables for finding probabilities or quantiles because you can easily generate the probabilities and cumulative probabilities for any binomial distribution quickly. The following commands provide one example.
+
+```{r}
+n <- 10 # set the number of trials
+p <- 0.5 # set the probability of success
+k <- c(0:10) # put all of the possible values for the number of successes into k
+Prob <- dbinom(k, n, p) # calculate P(B=k)
+CDF <- pbinom(k, n, p) # calculate P(B<=k), cumulative density function
+B10 <- cbind(k, Prob, CDF) # collate results into a table to print to screen
+B10 # print it to screen
+```
+
+# Hypothesis Testing and Estimation
+
+## Example 1 - Dental Example
+
+Dental scenario context from Sprent and Smeeton, 2016, Example 2.4.
+
+Suppose that about 75 percent of dental patients require work after a routine inspection. A new practice has opened and for a random sample of 10 patients, 4 were found to require work after their inspection. Is this evidence that the rate of 75 percent does not hold for this practice? At what significance level are you making your decision?    
+
+```{r}
+# values specified
+n <- 10
+p <- 0.75
+B <- 4 # observed number of "successes" as defined in your scenario
+```
+
+We want to understand the possible significance levels, so we look at the binomial probabilities.
+
+```{r}
+round(dbinom(0:10, n, p), 4)
+```
+
+A test that rejects if $B \leq 4$ or $B \geq 10$ has $\alpha$ of 0.076. We find this $\alpha$ by adding up the probabilities of those values of $B$ given the $n$ and $p$ provided.
+
+```{r}
+sum(round(dbinom(c(0, 1, 2, 3, 4, 10), n, p), 4))
+```
+
+Changing the region to $B \leq 3$ or $B \geq 10$ has $\alpha$ of 0.0598.
+
+```{r}
+sum(round(dbinom(c(0, 1, 2, 3, 10), n, p), 4))
+```
+
+We can also try the large-sample approximation here if we adjust our values just to see what would occur. Assume now that n=100 and B=40, so that the large-sample approximation is reasonable. This is equivalent to that formula you learned for the one-sample Z-test in introductory statistics. We'll use a two-sided test procedure. With our notation, the test statistic is
+
+$$
+B* = Bstar = \frac{B-np}{\sqrt{np(1-p)}}.
+$$
+
+and this has a null distribution that is standard normal. 
+
+Thus, in our setting, we compute it and then get the p-value as follows.
+
+```{r}
+Bstar <- (40-100*(0.75))/sqrt(100*0.75*0.25); Bstar # test statistic
+2*pnorm(Bstar) # p-value
+```
+
+
+# Rejection Regions
+
+For finding rejection regions, you need to understand if you are doing a one-sided or two-sided test, and you need to know what distribution is being used to find the p-value. You may see a Binomial distribution or a N(0,1) (standard normal) distribution, for example. 
+Here are some examples:
+
+To find the rejection region for an upper-tailed, one-sample Z-test with n=200, and significance level 0.01:
+
+```{r}
+# 1 - 0.01 = 0.99
+qnorm(0.99) # because N(0,1) is the default
+(-1)*qnorm(0.01) # equivalent, due to symmetry of the normal distribution
+```
+
+We would reject if the test statistic is greater than 2.326.
+
+If that had been a two-sided test:
+
+```{r}
+# 1 - (0.01/2) = 0.995
+qnorm(0.995) # because N(0,1) is the default
+```
+
+We would reject if the absolute value of the test statistic was greater than 2.576.
+
+For a lower-tailed, one-sample Z-test with n = 45, and significance level 0.08:
+
+```{r}
+qnorm(0.08) # lower-tailed tests are easier!
+```
+
+We would reject if the test statistic was less than -1.405.
+
+## Example 2 - Are Textbooks Too Long?
+
+A student has complained that introductory textbooks in STEM fields are too long. (Too long means 225 pages or more). An investigation has revealed that out of 15 textbooks used in STEM field intro courses, 13 were longer than 225 pages. Is there sufficient evidence (at a 0.10 level) that more than 2/3 of STEM intro books meet this student's definition of too long? 
+
+Would the usual parametric z-test work here? Explain. 
+
+```{r}
+n <- 15
+B <- 13
+```
+
+To begin, let's consider what our estimate of the proportion would be, and then we can move into the test procedure.
+
+With 13 out of 15 books being "too long," our best estimate of the associated probability of success is 13/15.
+
+It looks like we have an upper-tailed test due to the "more" specification. So we want to find $P(B \geq 13)$. Under the null hypothesis, B is binomial(n=15, p=2/3).  To find our p-value (our desired probability), we'll use the complement rule.
+
+```{r}
+1-pbinom(12, 15, 2/3)
+```
+
+Thus, our (one-sided) p-value is 0.0794. What conclusion do you reach?
+
+
+If you had been performing a two-sided test at level 0.10, what would your p-value have been? What would you have concluded?
+
+
+The test can also be performed with the binom.test function in R.
+
+```{r}
+binom.test(13, n = 15, p = (2/3), alt = "greater")
+```
+
+This function can also give you various confidence intervals (see below for another way to get them). 
+
+
+Suppose for the one-sided test, we had set a rejection region as: Reject the null hypothesis if B is greater than or equal to 14. What significance level does this correspond to performing the test at?
+
+```{r}
+# Add P(B=14) + P(B=15) under assumption null hypothesis is true (p=2/3)
+dbinom(14, 15, 2/3) + dbinom(15, 15, 2/3)
+```
+
+## Example 3 - Bird-Watching
+
+An endangered hawk species is sometimes sighted at various locations on a preserve. Two graduate students compare information they have about the hawk sightings. One claims to see the hawk about 1/4 of the time at some point during an hour visit to the preserve (during set hours). The second graduate student thinks the hawk appearances are more rare, and decides to investigate. Very patiently, the graduate student observes whether or not she spots the hawk on her next 100 hour long visits to the preserve. She spots the hawk 20 times. Is this evidence to back up her claim that the hawk sightings are more rare than claimed by the first graduate student?
+
+```{r}
+n <- 100
+B <- 20
+B/n
+```
+
+To estimate the proportion of times the hawk would be sighted (probability of sighting the hawk), we can just divide. 
+
+Our best estimate of the associated probability of success is 20/100=0.2. 
+
+
+We can perform the usual one-sample z-test due to conditions being met. Let's compare the results from that procedure with results from a exact binomial test. We'll need the sample proportion, $\hat{p} = phat = B/n$ and our test statistic, $Z$. The formula for $Z$ is
+
+$$
+Z = \frac{\hat{p}-p}{\sqrt{p(1-p)/n}}.
+$$
+
+Computing that here, we find
+
+```{r}
+phat <- B/n
+Z <- (phat-0.25)/sqrt(0.25*0.75/n)
+Z
+pnorm(Z)
+```
+
+We obtain a Z test statistic of -1.1547 and a corresponding lower-tailed p-value of 0.124 using the usual one-sample z-test. If you work with the test statistic in the HWC (Hollander, Wolfe, and Chicken), you can get an analogous value for the test statistic (Bstar defined above):
+
+```{r}
+ts <- (B-n*0.25)/sqrt(n*0.25*0.75)
+ts
+```
+
+What if we didn't do the large-sample approximation? Well, B should be Binomial(100,0.25) assuming that the null hypothesis is true, so we want to find P(B $\leq$ 20). 
+
+```{r}
+pbinom(20, 100, 0.25)
+# alternative 
+binom.test(20, 100, 0.25, alt = "less")
+```
+
+We find that the exact p-value is 0.1488.
+
+Do the conclusions from the tests match? 
+
+
+# Solving for sample size
+
+Suppose we want to ensure that $\hat{p}$ is within 0.03 of $p$ with 90 percent confidence. Then, following the formulas (which are conservative), we solve for our desired $n$ as follows.
+
+First, we need the critical value from the normal distribution. 90 percent confidence means our significance level is 0.10. So half of that is 0.05, and that's the amount we want in the upper-tail. 
+
+```{r}
+qnorm(0.95)
+```
+
+We see the critical value is 1.645 (you might have this one memorized). We note $D=0.03$ as provided, so we plug into our formula (Hollander, Wolfe, and Chicken, 2.23), which says the sample size should be
+
+$$
+n = \frac{(z_{\alpha/2})^2}{4D^2}.
+$$
+
+With the given numbers here, we get
+
+```{r}
+critical <- 1.645
+D <- 0.03
+n <- ((critical)^2)/(4*(D^2));n
+```
+
+We would need an $n$ of 752 (round up!). Why is this so large? The $D$ here is fairly small. Increasing $D$ would result in a smaller sample size. 
+
+What would happen to n if we increased our confidence level, say to 95 percent, and still had $D=0.03$?
+
+Now, suppose you had an idea that $p$ was somewhere near 0.3 from previous research. Rather than using this formula (Hollander, Wolfe, and Chicken, 2.23), try using the alternative formula (Hollander, Wolfe, and Chicken, 2.22) and plug in for $p$ and $(1-p)$ instead of using 1/2 for each. The formula is:
+
+$$
+n = \frac{(z_{\alpha/2})^2(p(1-p))}{D^2}.
+$$
+
+With our values, that gives
+
+```{r}
+p <- 0.3
+n <- (((critical)^2)*p*(1-p))/((D^2));n
+```
+
+What happens to your required $n$? Why? 
+
+# Confidence Intervals
+
+Obtaining CIs for $p$ is very simple, as demonstrated below. We'll also look at obtaining $\tilde{p}$, spoken as p-tilde, the alternative estimator of $p$, instead of $\hat{p}$, the usual sample proportion. Remember that p-tilde works by basically "adding" some observations, half of which are successes. 
+
+This section assumes you learned about four intervals: the Wilson CI (W), the Laplace-Wald CI (LW, which is shown as 'asymptotic' in the output), the Agresti-Coull CI (AC), and the Clopper-Pearson CI (CP, which is shown as 'exact' in the output). 
+
+## Return to Example 1 - Dental Practice Example
+
+```{r}
+B <- 4
+n <- 10
+phat <- B/n; phat
+```
+
+To get $\tilde{p}$ with 95% confidence, we use:
+
+```{r}
+critical <- 1.96 #critical <- qnorm(0.975) would work just as well
+```
+
+The formula (comment 18 in Hollander, Wolfe, and Chicken, 2.3) for $\tilde{p}$ is:
+
+$$
+\tilde{p} = \frac{B+z^2_{\alpha/2}/2}{n + z^2_{\alpha/2}}.
+$$
+
+We plug values in here to get it as:
+
+```{r}
+# We write ptilde because code doesn't handle LaTeX for symbols!
+ptilde <- (B+(critical^2)/2)/(n+critical^2); ptilde
+```
+
+Now let's generate 95 percent CIs.
+
+```{r}
+binom.confint(x = 4, n = 10, conf.level = 0.95, methods = "all")
+```
+
+The intervals we want to compare are the agresti-coull, asymptotic, exact, and wilson intervals. What do you see here? Can you read off their endpoints? Which interval is widest?
+
+Finally, what happens if we increase n = 100 and B = 40?
+
+```{r}
+binom.confint(x = 40, n = 100, conf.level = 0.95, methods = "all")
+```
+
+## Return to Example 2 - STEM Textbook Example
+
+```{r}
+B <- 13
+n <- 15
+phat <- B/n; phat
+```
+
+Let's obtain $\tilde{p}$ with 90 percent confidence. This means the required critical value is 1.645.
+
+```{r}
+critical <- 1.645 # critical <- qnorm(0.95) would work just as well
+```
+
+We find $\tilde{p}$:
+
+```{r}
+ptilde <- (B+(critical^2)/2)/(n+critical^2); ptilde
+```
+
+Now let's generate 90 percent CIs.
+
+```{r}
+binom.confint(x = 13, n = 15, conf.level = 0.90, methods = "all")
+```
+
+Compare the CIs we've covered so far. Based on the sample size, which would you recommend here?
+
+
+
+What would you expect to change if we raised the confidence level to 95 percent?
+
+
+
+Let's check it out. 
+
+```{r}
+critical95 <- 1.96 # critical95 <- qnorm(0.975)
+ptilde95 <- (B+(critical95^2)/2)/(n+critical95^2); ptilde95
+binom.confint(x = 13, n = 15, conf.level = 0.95, methods = "all")
+```
+
+## Return to Example 3 - Bird Watching Example
+
+```{r}
+B <- 20
+n <- 100
+phat <- B/n;phat
+```
+
+Let's obtain $\tilde{p}$ with 90 percent confidence. This means the required critical value is... what?
+
+```{r}
+critical <- 1.645
+ptilde <- (B+(critical^2)/2)/(n+critical^2); ptilde
+```
+
+Now let's generate 90 percent CIs.
+
+```{r}
+binom.confint(x = 20, n = 100, conf.level = 0.90, methods = "all")
+```
+
+Compare the CIs we've covered so far. Based on the sample size, which would you recommend here based on the recommendations in Hollander, Wolfe, and Chicken?
+
+
+What would you expect to change if we raised the confidence level to 95 percent? We can check to make sure our intuition is correct!
+
+```{r}
+critical95 <- 1.96 # OR critical95 <- qnorm(0.975)
+ptilde95 <- (B+(critical95^2)/2)/(n+critical95^2); ptilde95
+binom.confint(x = 20, n = 100, conf.level = 0.95, methods = "all")
+```
+
+# Beta Distributions and Bayesian Posteriors for p 
+
+When considering Bayesian estimation, the parameter is treated as a random variable. Here, that means we need a distribution for $p$, a proportion. The distribution used is the beta distribution. 
+
+## Quick Intro to the Beta Distribution
+
+The Beta distribution is a continuous distribution with bounds at 0 and 1, and generalizes the uniform distribution on (0,1). It has two parameters, which Hollander, Wolfe, and Chicken refer to as $r$ and $s$. These parameters govern the shape of the distribution, as well as its mean and variance. The mean is $r/(r+s)$, and the variance is $rs/((r+s)^2(r+s+1))$. Generally, if $r$ is larger than $s$, we expect the peak to be on the right of the distribution, and vice versa. Here, we visualize two Beta distributions with flipped parameters - i.e. a Beta($r$,$s$) and a Beta($s$,$r$), so you can see how the parameters influence the shape. Feel free to try the code and adjust the values of $r$ and $s$!
+
+```{r}
+r <- 8
+s <- 3
+# Beta(r,s) is black solid line, Beta(s,r) is red dashed line
+curve(dbeta(x, r, s), 0, 1, ylab = "Density", main = "Betas with flipped parameters") 
+curve(dbeta(x, s, r), 0, 1, add = TRUE, col = 2, lty = 2) 
+```
+
+For reference, example uninformative priors include the Bayes-Laplace (Beta(1,1)) and Jeffrey's (Beta(1/2,1/2)). These are used when little to no prior information is available about p. 
+
+## Return to Example 1 - Dental Practice Example
+
+To apply a Bayesian approach, we need a prior distribution for $p$. We then combine the prior with the data to obtain a posterior distribution (the data updates it from the prior). Choosing the prior is up to you, but can be done based on provided information from past results. 
+
+We had $n=10$, $B=4$, and a prior belief that $p=0.75$. So we want a prior that reflects that belief. Since the mean of the beta distribution is $r/(r+s)$, if we use a Beta(3,1), we would have a mean of 0.75. Many other options would also give that mean, but would have differences in spread (see later example). Often, we choose $r$ and $s$ so that their sum is minimized and we maintain the desired mean. 
+
+So our Bayesian estimate for $p$ with that prior is:
+
+```{r}
+B <- 4
+n <- 10
+r <- 3
+s <- 1
+
+bayes <- (B+r)/(r+s+n); bayes
+```
+
+If we changed to n=100 and B=40, we would get:
+
+```{r}
+B <- 40
+n <- 100
+r <- 3
+s <- 1
+
+bayes <- (B+r)/(r+s+n); bayes
+```
+
+## Example 4 - Example incorporating spread information
+
+Suppose we believe that 80 percent of students eat breakfast during add/drop with a standard deviation of 0.03. We survey 32 students and find that 24 ate breakfast that day. Find a Bayesian estimator for $p$, and explain your choice of a prior. 
+
+We want to pick a prior that matches a mean of 0.8 and variance of $(0.03)^2=0.0009$. 
+
+A mean of 0.8 means $r/(r+s)=0.8$, and this can be re-arranged to give $4s=r$. We can then work with the variance formula, plugging 4s in for r everywhere. (It's more work to match the variance too!)
+
+Eventually, we find $5s=176.77$, so $s=35.35$, and therefore $r=141.42$. Note that $r$ and $s$ don't have to be integers. 
+
+Hence, we use a Beta(141.42, 35.35) prior, and find that:
+
+```{r}
+B <- 24
+n <- 32
+r <- 141.42
+s <- 35.35
+
+bayes <- (B+r)/(r+s+n); bayes
+```
+
+Here, the prior is overwhelming the data a bit too much. We might want to ignore the spread information, collect more data, or try an uninformative prior instead. 
+
+As an example, the uninformative Bayes-Laplace prior would give us:
+
+```{r}
+B <- 24
+n <- 32
+r <- 1
+s <- 1
+
+bayes <- (B+r)/(r+s+n); bayes
+```
+
+You can try multiple priors to see their impact on your final solution. 
+
+## Data Sources
+
+Dental scenario context from Example 2.4 in Sprent, P., & Smeeton, N. C. (2016). Applied nonparametric statistical methods. CRC press.
+
+Other scenarios are hypothetical with realistic data values chosen for illustration. 
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. The material presented here covers sections 2.1-2.4 of the text.
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

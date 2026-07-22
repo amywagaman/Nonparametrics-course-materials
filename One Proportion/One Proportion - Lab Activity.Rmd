@@ -1,0 +1,182 @@
+---
+title: "One Proportion - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+```
+
+# Practice with the Binomial distribution
+
+a) Make a plot of the Binomial(45,0.4) distribution. 
+
+```{r}
+
+```
+
+For the next three parts, let $X$ be a random variable such that $X$ is Bin(n = 10, p = 0.3). Use R code to find the following probabilities.
+
+b) P(X $\leq$ 4)
+
+```{r}
+
+```
+
+c) P(X>1)
+
+```{r}
+
+```
+
+d) P(X<3)
+
+```{r}
+
+```
+
+
+
+# Solving for sample size
+
+Suppose you wanted $\hat{p}$ to be within 0.10 of $p$ with 98 percent confidence. What sample size is required to guarantee this?
+
+```{r}
+
+```
+
+
+## Practice Problems in R
+
+Complete the following problems based on the provided data. Bear in mind you are allowed to perform parametric procedures if appropriate conditions check out, and this data set has a large sample size. 
+
+```{r}
+abalone <- read.table("https://awagaman.people.amherst.edu/nonparametricstats/abalone.txt",
+                      h = T, sep = ",")
+```
+
+This data set was stored as a comma-delimited text file, so we read it in as a table, and had to use the sep option to tell it about the commas. We will usually see read.table or read.csv commands to load data. 
+
+This data set contains information on 4177 abalones (sea snails). The variables included are:
+
+* Sex - M, F, and I (infant)
+* Length - mm - Longest shell measurement
+* Diameter - mm - perpendicular to length
+* Height - mm - with meat in shell
+* Whole weight - grams - whole abalone
+* Shucked weight - grams - weight of meat
+* Viscera weight - grams - gut weight
+* Shell weight - grams - after being dried
+* Rings - number of rings in the shell - 1.5+rings gives the age in years
+
+Note that the descriptions do not exactly match the variable names - whoever entered the data shortened the names somewhat. To see the names of variables in the data set, use:
+
+```{r}
+names(abalone)
+```
+
+Now, let's try to address some questions that researchers have about the sea snails. 
+
+### Question 1
+
+A policy maker wants to estimate the fraction of caught abalone that would be returned to the wild if the whole weight cutoff was set at 0.50 (abalones that do not meet the cutoff are returned to the wild to continue their life-cycle). Assist this policy maker with both a point estimate and confidence interval. 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+### Question 2
+
+For this question, we are going to look at the 20 smallest abalones in terms of Height.
+
+```{r}
+cutoff <- sort(abalone$Height)[20]+0.00000001
+
+# pulling value with tidyverse
+cutoff <- as.numeric(abalone %>%
+  arrange(Height) %>% slice(20) %>%
+  summarize(cutoff = Height + 0.00000001))
+```
+
+First, we identify the Height cutoff and add a little bit so we will include the 20th if we ask for heights < the cutoff. In the event of ties, we need to see how many observations we actually end up with. 
+
+```{r}
+abalone2 <- filter(abalone, Height < cutoff)
+dim(abalone2)
+```
+
+So, we are looking at just 24 abalones now, due to ties. 
+
+Among the smallest abalones, is there evidence that more than 75 percent are infants? 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore, investigating the different types of confidence intervals for proportions.
+
+Use Google Scholar and do a search for "Wald confidence interval" (or another method covered) and an application area of interest to you. For example, search for '"wald interval" archaeology' to look for applications of the wald interval in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Andersson, Per Gosta, "The Wald confidence interval for a binomial p as an illuminating “bad” example," The American Statistician, 77.4, 2023: 443-448. (Advanced, theoretical article)
+
+McGrath, Owen, and Kevin Burke, "Binomial confidence intervals for rare events: importance of defining margin of error relative to magnitude of proportion," The American Statistician, 78.4, 2024: 437-449.
+
+Sauro, J., & Lewis, J. R., "Estimating Completion Rates from Small Samples Using Binomial Confidence Intervals: Comparisons and Recommendations," Proceedings of the Human Factors and Ergonomics Society Annual Meeting, 49(24), 2005: 2100-2103.
+
+Xu B, Feng X, and Burdine RD, "Categorical data analysis in experimental biology," Dev Biol. 348.1, 2010: 3-11. doi: 10.1016/j.ydbio.2010.08.018. Epub 2010 Sep 6. PMID: 20826130; PMCID: PMC3021327.
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+
+What was the nonparametric procedure used for in the article? Describe as best you can. For example, assuming a confidence interval was generated, what were they using it for?
+
+> SOLUTION:
+
+
+Does the article state why the nonparametric procedure was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+
+## Data Sources
+
+Nash, W., Sellers, T., Talbot, S., Cawthorn, A., & Ford, W. (1994). Abalone [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C55C7W.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
