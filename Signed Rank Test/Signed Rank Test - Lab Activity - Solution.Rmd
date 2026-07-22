@@ -1,0 +1,317 @@
+---
+title: "Signed Rank Test - Lab Activity - Solution"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(BSDA) # for Sign Test
+```
+
+
+## Dealing with Discrete Distributions
+
+Figure out how you would find the p-value or the appropriate critical value (to define the critical or rejection region) for a signed rank test procedure as specified in the problems below. Compute it using R! Remember to be careful due to the discrete nature of these distributions. Think about: do I need to add 1? Subtract 1? Leave the value alone? We recommend sketches and writing down the desired probabilities of interest before trying to compute them. 
+
+1. n=15, $T+$=85, upper-tailed test. Compute the p-value.
+
+> SOLUTION:
+
+```{r}
+1-psignrank(84, 15) 
+psignrank(84, 15, lower.tail = FALSE)
+```
+
+The p-value is 0.0844. We use 1-$P(T+\leq84)$ to get $P(T+\geq85)$, or just remember to subtract 1 and do `lower.tail=FALSE`.
+
+2. n=15, upper-tailed test. Find the critical value that comes closest to (but without going over) an alpha=0.03 level test. 
+
+> SOLUTION:
+
+We know from above that using 85 would give an alpha=0.0844 level test. So, we need to consider higher values of $T+$ as cutoff values.
+
+```{r}
+1-psignrank(85:95, 15)
+```
+
+This command lets us see what would happen when $T+$ ranges from 86 to 96. Note the shift due to the discrete nature of the distribution. Counting across, 93 gives us 0.0318, and 94 gives us 0.0277. We will choose 94 because we don't want to go over 0.03. We validate by checking just that single value (in case we counted across incorrectly).
+
+```{r}
+1-psignrank(93, 15) # P(Tplus >= 94)
+psignrank(93, 15, lower.tail = FALSE) # confirms to use 94 or larger as cutoff
+```
+
+3. n=15, $T+$=24, two-tailed test. Compute the p-value.
+
+> SOLUTION:
+
+We need to figure out which tail $T+$=24 is in, so we can find the appropriate tail probability and double it. Recall that the mean $T+$ value is $n(n+1)/4$.
+
+```{r}
+n <- 15
+mean <- n*(n+1)/4
+mean
+```
+
+Since the mean is 60, $T+$ =24 is in the lower tail. Thus, the associated 2-tailed p-value is:
+
+```{r}
+2*psignrank(24,15)
+```
+
+About 0.0413.
+
+4. n=15, two-tailed test. Find the critical value that comes closest to (but without going over) an alpha=0.08 level test. Remember the distribution is symmetric around the mean in the case of no ties, which can help your computations, and $(Max T+ = n(n+1)/2)$. 
+
+> SOLUTION:
+
+Basically we need to find a lower-tailed cutoff for alpha=0.04. Then we take max value minus that cutoff and that should be the upper-tailed cutoff. Based on the results of the above problem, we need a slightly higher value of $T+$ than 24.
+
+```{r}
+psignrank(25:35, 15)
+```
+
+It looks like $T+$ of 28 might be our result. The maximum is $n(n+1)/2$.
+
+```{r}
+psignrank(28, 15)
+max <- n*(n+1)/2
+max-28
+1-psignrank(91, 15)
+```
+
+So, we would reject the null hypothesis if $T+$ is $\leq$ 28 or $\geq$ 92, with an achieved alpha of 0.073, found with:
+
+```{r}
+2*psignrank(28, 15)
+```
+
+## Practice Problems in R
+
+Complete the following problems based on the provided data. Bear in mind you are allowed to perform parametric procedures if appropriate conditions check out, and this data set has a large sample size. 
+
+```{r}
+abalone <- read.table("https://awagaman.people.amherst.edu/nonparametricstats/abalone.txt",
+                      h = T, sep = ",")
+```
+
+This data set was stored as a comma-delimited text file, so we read it in as a table, and had to use the sep option to tell it about the commas. We will usually see read.table or read.csv commands to load data. 
+
+This data set contains information on 4177 abalones (sea snails). The variables included are:   
+
+* Sex - M, F, and I (infant)
+* Length - mm - Longest shell measurement
+* Diameter - mm - perpendicular to length
+* Height - mm - with meat in shell
+* Whole weight - grams - whole abalone
+* Shucked weight - grams - weight of meat
+* Viscera weight - grams - gut weight
+* Shell weight - grams - after being dried
+* Rings - number of rings in the shell - 1.5+rings gives the age in years
+
+Note that the descriptions do not exactly match the variable names - whoever entered the data shortened the names somewhat. To see the names of variables in the data set, use:
+
+```{r}
+names(abalone)
+```
+
+Now, let's try to address some questions that researchers have about the sea snails. For the two questions below, perform both an appropriate parametric and nonparametric procedure and compare the results. 
+
+
+### Question 1 
+
+Is 0.3 a reasonable value for a randomly selected abalone's diameter?
+
+*Remember to think through conditions for applying your chosen statistical procedures.*      
+
+> SOLUTION:
+
+*Parametric*
+
+We are looking at the diameters of the abalones, so we examine the distribution of diameter values. 
+
+```{r}
+histogram(~ Diameter, data = abalone)
+# with(abalone, hist(Diameter))
+# you could make a qqplot too!
+```
+
+Although Diameter is not normally distributed, n=4177 is large, so we can make a confidence interval for $\mu$, the mean diameter, and check to see if 0.3 is reasonable.
+
+```{r}
+t.test(~ Diameter, data = abalone, conf.level = 0.95)
+# with(abalone, t.test(Diameter, conf.level = 0.95)) # same result
+```
+
+Our 95 percent CI is (0.405, 0.4109). We can see that 0.3 is NOT in the CI, and hence, not a reasonable value. 
+
+For our nonparametric CI, we'll just show the signed rank based one.
+
+Note that this assumes that all the abalones diameters come from the same distribution, which must be symmetric. We probably doubt the symmetry based on the plot above, though symmetry is a more relaxed condition than normality. 
+
+```{r}
+with(abalone, wilcox.test(Diameter, conf.int = TRUE, conf.level = 0.95))
+```
+
+The reported CI is (0.4100, 0.4174). This is shifted up slightly compared to the parametric one but is still very similar.
+
+### Setup for Questions 2 and 3
+
+For the next set of questions, we are going to look at the 20 smallest abalones in terms of Height.
+
+```{r}
+cutoff <- sort(abalone$Height)[20]+0.00000001
+
+# pulling value with tidyverse
+cutoff <- as.numeric(abalone %>%
+  arrange(Height) %>% 
+  slice(20) %>%
+  summarize(cutoff = Height + 0.00000001))
+```
+
+First, we identify the Height cutoff and add a little bit so we will include the 20th if we ask for heights < the cutoff. In the event of ties, we need to see how many observations we actually end up with. 
+
+```{r}
+abalone2 <- filter(abalone, Height < cutoff)
+dim(abalone2)
+```
+
+So, we are looking at just 24 abalones now. 
+
+### Question 2
+
+We tend to presume the smallest abalones are those still developing. In abalone development, how much longer are abalones than they are wide (diameter)? 
+
+*Remember to think through conditions for applying your chosen statistical procedures.*       
+
+> SOLUTION:
+
+We want a confidence interval for the difference. We could also do a test to address the first part of the question. If the differences are normally distributed, we could use a parametric procedure.
+
+```{r}
+with(abalone2, hist(Length-Diameter))
+abalone2 <- mutate(abalone2, diffLD = Length-Diameter)
+histogram(~ diffLD, data = abalone2)
+```
+
+The differences are definitely NOT normally distributed. So, we'll use the Signed Rank Test. Again, this assumes the differences share a common median, but can come from different populations. For small abalones, this is probably reasonable, as most are infants. 
+
+```{r}
+with(abalone2, wilcox.test(Length, Diameter, paired = TRUE,
+                           conf.int = TRUE, conf.level = 0.95))
+```
+
+We are warned that there are ties, so these results are just approximate. The test seems to suggest that abalones are usually longer than they are wide when developing (divide the 2-tailed p-value by 2). The CI is (0.04243,0.05753), which does not include 0. Because we gave the variables in the order of Length then Diameter, the differences were constructed as Length-Diameter.  
+
+### Question 3
+
+A policy maker wants to protect developing abalones (these small ones), and suggests that if the whole weight of a caught abalone is 0.05 or less, that the abalone be released back into the wild to continue developing. Is there evidence to suggest this cutoff is reasonable? If not, what cutoff would you suggest? 
+
+*Remember to think through conditions for applying your chosen statistical procedures.*       
+
+> SOLUTION:
+
+Basically we want to study the whole weight of the developing abalones.
+
+```{r}
+# with(abalone2, hist(Wholewt))
+histogram(~ Wholewt, data = abalone2)
+```
+
+The whole weight distribution is clearly not normal - it has pronounced outliers. If we want to do any testing or CIs, we need a nonparametric procedure, although these still require symmetry for the median based approaches versus fraction based approaches (returning to one proportion problems). Does the distribution appear symmetric? 
+
+There are several approaches at this point. We chose to consider the fraction of abalones returned based on this cutoff. Think back to what you learned about proportions. 
+
+```{r}
+length(which(abalone2$Wholewt < 0.05000000001))
+```
+
+21 of the 24 have Whole weights $\leq$ 0.05. So, we can construct a nonparametric estimate of the fraction that would meet the cutoff in several ways. Here is a Bayesian approach with a uniform prior (Hollander, Wolfe, and Chicken, Chapter 2 material).
+
+```{r}
+B <- 21
+n <- 24
+mean <- (B+1)/(n+2)
+mean
+```
+
+About 84.6 percent is our point estimate. If we really want to save all these abalones, we might want to increase the cutoff. Using 0.05 saves about 84.6 percent based on our data. 
+
+You can also do things here to get a CI for the Whole weight of these abalones, with some concern for the symmetry condition.
+
+```{r}
+with(abalone2, wilcox.test(Wholewt, conf.int = TRUE))
+```
+
+Here, the 95% CI would be (0.01721, 0.03200). This would suggest that a 0.05 cutoff would protect most of these abalones, as 0.05 is above the upper bound. 
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the signed rank test is used.
+
+Use Google Scholar and do a search for "signed rank test" (or "Wilcoxon signed rank") and an application area of interest to you. For example, search for '"signed rank" archaeology' to look for applications of the signed rank test in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Phonlakrai, Monchai, et al., "Assessing Patient and Caregiver Knowledge and Satisfaction on Transcatheter Arterial Chemoembolization Using Video-Based Education," Journal of Radiology Nursing, 42.3, 2023: 361-367.
+
+Liu, Longjian, Heart failure: epidemiology and research methods, Elsevier Health Sciences, 2017, Chapter 4. 
+
+Chandran, Avinash, et al., "Concussion knowledge, attitudes, and self-reporting intentions in youth athletes," Journal of athletic training, 55.10, 2020: 1027-1034.
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Answers will vary. 
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+Answers will vary.
+
+What was the signed rank test used for in the article? Describe as best you can. For example, what were the hypotheses being tested?    
+
+> SOLUTION:
+
+Answers will vary.
+
+Does the article state why the signed rank test was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Answers will vary.
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+Answers will vary.
+
+
+## Data Sources
+
+Nash, W., Sellers, T., Talbot, S., Cawthorn, A., & Ford, W. (1994). Abalone [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C55C7W.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
