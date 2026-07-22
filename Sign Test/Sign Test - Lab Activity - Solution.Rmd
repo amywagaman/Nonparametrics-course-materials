@@ -1,0 +1,295 @@
+---
+title: "Sign Test - Lab Activity - Solution"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(BSDA) # for Sign Test
+```
+
+
+## Dealing with Discrete Distributions
+
+Figure out how you would find the p-value or the appropriate critical value (to define the critical or rejection region) for a sign test procedure as specified in the problems below. Compute the values using R! Remember to be careful due to the discrete nature of these distributions. Think about: do I need to add 1? Subtract 1? Leave the value alone? We recommend sketches and writing down the desired probabilities of interest before trying to compute them. 
+
+1. n=15, B=5, lower-tailed test. Compute the p-value.
+
+> SOLUTION:
+
+The p-value should be the probability of obtaining B=5 or lower under the assumption that B should be Binomial(15,0.5). 
+
+```{r}
+pbinom(5, 15, 0.5)
+```
+
+2. n=15, lower-tailed test. Find the critical value that comes closest to (but without going over) an alpha = 0.05 level test. 
+
+Here, we need to examine possible cutoffs and see which one is closest to, but without going over alpha=0.05. There are two approaches. We can use `qbinom` and adjust carefully, or `pbinom` and examine several values.
+
+```{r}
+qbinom(0.05, 15, 0.5)
+```
+
+This approach tells us that 4 is the 5th percentile of the Bin(15,0.5) distribution. However, this may result in an alpha>0.05, so we should probably subtract 1 and use 3. Again, the reason this occurs is that just because 4 is the 5th percentile, due to the discrete nature of the distribution, 4 could also be the 6th percentile, or the 7th, etc. To check, consider the other approach:
+
+```{r}
+round(pbinom(0:5, 15, 0.5), 3)
+```
+
+Here, we see the different achieved alphas using cutoffs of 0 to 5. Using 4 actually gives an alpha of 0.059, while using 3 gives 0.018. Thus, we should use 3 as our cutoff, and the alpha achieved is 0.018. 
+
+3. n=18, B = 15, upper-tailed test. Compute the p-value.
+
+> SOLUTION:
+
+The p-value should be the probability of obtaining B=15 or higher under the assumption that B should be Binomial(18,0.5). We need to be careful using pbinom because that goes up to and includes the value we enter. So, we'd do up to and including 14, and then subtract from 1 to get the upper-tail. 
+
+```{r}
+1-pbinom(14, 18, 0.5)
+```
+
+4. n=18, two-tailed test. Find the critical value that comes closest to (but without going over) an alpha = 0.05 level test, with an equal number of potential $B$ values in each tail. (Note that because the binomial with p = 0.5 is symmetric, this is the same as asking for equal tail probabilities.)
+
+> SOLUTION:
+
+There are a number of ways to approach this, but looking at the tails of the Binomial(18, 0.5) distribution helps.
+
+```{r}
+round(dbinom(c(0:6, 12:18), 18, 0.5), 4)
+```
+
+The distribution is symmetric, since $p$ = 0.5, so we just need to find one tail going to 0.025 and not over. Trying values, we see that
+
+```{r}
+pbinom(4, 18, 0.5)
+pbinom(5, 18, 0.5)
+```
+
+So, if we use 4 as the critical value in the lower tail, and 14 for the upper tail, we should end up with an alpha of  0.031. Going up to 5 and down to 13 as the pair takes the alpha over 0.05. 
+
+```{r}
+sum(round(dbinom(c(0:4, 14:18), 18, 0.5), 4))
+```
+
+
+## Practice Problems in R
+
+Complete the following problems based on the provided data. Bear in mind you are allowed to perform parametric procedures if appropriate conditions check out, and this data set has a large sample size. 
+
+```{r}
+abalone <- read.table("https://awagaman.people.amherst.edu/nonparametricstats/abalone.txt",
+                      h = T, sep = ",")
+```
+
+This data set was stored as a comma-delimited text file, so we read it in as a table, and had to use the sep option to tell it about the commas. We will usually see `read.table` or `read.csv` commands to load data. 
+
+This data set contains information on 4177 abalones (sea snails). The variables included are:
+
+* Sex - M, F, and I (infant)  
+
+* Length - mm - Longest shell measurement
+
+* Diameter - mm - perpendicular to length
+
+* Height - mm - with meat in shell
+
+* Whole weight - grams - whole abalone
+
+* Shucked weight - grams - weight of meat
+
+* Viscera weight - grams - gut weight
+
+* Shell weight - grams - after being dried
+
+* Rings - number of rings in the shell - 1.5+rings gives the age in years 
+
+Note that the descriptions do not exactly match the variable names - whoever entered the data shortened the names somewhat. To see the names of variables in the data set, use:
+
+```{r}
+names(abalone)
+```
+
+Now, let's try to address some questions that researchers have about the sea snails. For the two questions below, perform both an appropriate parametric and nonparametric procedure and compare the results. 
+
+**A note on checking conditions**
+
+For the sign test, paired setting, the differences need to have a common median but can come from different populations. For the non-paired setting, they need to come from the same population. 
+
+These assumptions are hard to check, although we have some guidance. If we believe observations are i.i.d. - independent and identically distributed, then they come from the same population. Checking symmetry is doable via a histogram or density plot. In the event that we believe multiple populations might be present however, this can be tricky, as shown below. 
+
+### Question 1 
+
+Are abalones usually longer than they are tall? In other words, is Length > Height?
+
+*Remember to think through the conditions to check before doing any procedure - parametric or nonparametric.*        
+
+> SOLUTION:
+
+Parametric
+
+```{r}
+with(abalone,hist(Length-Height)) # quick way to plot differences
+# add differences to the data set
+abalone <- mutate(abalone, diffLH = Length-Height)
+histogram(~ diffLH, data = abalone)
+gf_qq(~ diffLH, data = abalone) %>% gf_qqline()
+```
+
+n=4177 is large, so although the differences do not appear to be normally distributed, we can proceed with the usual t-test. 
+
+```{r}
+with(abalone, t.test(Length, Height, paired = TRUE, alternative = "greater"))
+# equivalent way to run the same test
+t.test(~ diffLH, data = abalone, mu = 0, alternative = "greater") 
+```
+
+We learn the sample mean is 0.3845, our test stat is 280.3, and our p-value is TINY! We do have sufficient evidence that the abalones are longer than they are tall, on average.
+
+**Nonparametric (Sign Test)**
+
+Here, the differences can all come from different populations, so its very hard to check the assumptions for the test. If you think the three sexes might be the populations, you could check plots of the differences (like histograms or qqplots) by sex. In general though, since we are allowed to have different distributions, we should just consider if it is reasonable for all the differences to share a common median. Here, that might actually be questionable (they might not have the same mean either), but we'll proceed assuming that holds.
+
+```{r}
+with(abalone, SIGN.test(Length, Height, alternative = "greater")) # sign test
+```
+
+The sign test results clearly indicate that the abalones are longer than they are tall. 
+
+### Question 2
+
+Is the usual shucked weight of an abalone different from 1 gram? 
+
+*Remember to think through the conditions to check before doing any procedure - parametric or nonparametric.*       
+
+> SOLUTION:
+
+What distribution do the observations have? Is it normal looking? What does that information tell you? Is there other information relevant to picking a test procedure here if you were only doing one? 
+
+```{r}
+gf_qq(~ Shuckedwt, data = abalone) %>% gf_qqline()
+```
+
+```{r}
+with(abalone, SIGN.test(Shuckedwt, md = 1)) # sign test
+with(abalone, t.test(Shuckedwt, mu = 1)) # t.test 
+```
+
+Note that the sign test indicates that the median is not equal to one and the t test indicates that the mean is not equal to one.  That is, the two tests agree in this situation. You should also note that both 95% confidence intervals do not contain 1 as a plausible value. 
+
+### Question 3
+
+For this question, we aim to look at the 20 smallest abalones in terms of Height.
+
+```{r}
+cutoff <- sort(abalone$Height)[20] + 0.00000001
+
+# pulling value with tidyverse
+cutoff <- as.numeric(abalone %>%
+  arrange(Height) %>% slice(20) %>%
+  summarize(cutoff = Height + 0.00000001))
+
+```
+
+First, we identify the Height cutoff and add a little bit so we will include the 20th if we ask for heights < the cutoff. In the event of ties, we need to see how many observations we actually end up with. 
+
+```{r}
+abalone2 <- filter(abalone, Height < cutoff)
+dim(abalone2)
+```
+
+So, we are looking at just 24 abalones now. 
+
+We tend to presume the smallest abalones are those still developing. In abalone development, is there evidence based on this data set that these abalones are usually longer than they are wide (diameter)? 
+
+>SOLUTION:
+
+We want a confidence interval for the difference. We could also do a test to address the first part of the question. If the differences are normally distributed, we could use a parametric procedure.
+
+```{r}
+with(abalone2, hist(Length-Diameter))
+abalone2 <- mutate(abalone2, diffLD = Length-Diameter)
+histogram(~ diffLD, data = abalone2)
+gf_qq(~ diffLD, data = abalone2) %>% gf_qqline()
+```
+
+The differences are definitely not normally distributed. So, we'll use the Sign Test. 
+
+```{r}
+with(abalone2, 
+     SIGN.test(Length, Diameter, paired = TRUE,
+               conf.int = TRUE, conf.level = 0.95))
+```
+
+The test suggests that abalones are usually longer than they are wide when developing (divide the 2-tailed p-value by 2). The CI is (0.04,0.055). 
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the sign test is used.
+
+Use Google Scholar and do a search for "sign test" and an application area of interest to you. For example, search for '"sign test" archaeology' to look for applications of the sign test in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Ahn, Chul, Fan Hu, and Seung-Chun Lee, "Relative efficiency of unequal versus equal cluster sizes for the nonparametric weighted sign test estimators in clustered binary data," Drug information journal, 46.4, (2012): 428-433.
+
+Fine, Paul VA, et al., "Population genetic structure of California hazelnut, an important food source for people in Quiroste Valley in the Late Holocene," California Archaeology, 5.2, (2013): 353-370.
+
+Keele, Luke, Corrine McConnaughy, and Ismail White, "Strengthening the experimenter’s toolbox: Statistical estimation of internal validity," American Journal of Political Science, 56.2, (2012): 484-499.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Answers will vary. 
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+Answers will vary. 
+
+What was the sign test used for in the article? Describe as best you can. For example, what were the hypotheses being tested? 
+
+> SOLUTION:
+
+Answers will vary. 
+
+Does the article state why the sign test was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Answers will vary. 
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+Answers will vary. 
+
+
+## Data Sources
+
+Nash, W., Sellers, T., Talbot, S., Cawthorn, A., & Ford, W. (1994). Abalone [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C55C7W.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

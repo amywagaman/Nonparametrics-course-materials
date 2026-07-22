@@ -1,0 +1,214 @@
+---
+title: "Sign Test - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(BSDA) # for Sign Test
+```
+
+
+## Dealing with Discrete Distributions
+
+Figure out how you would find the p-value or the appropriate critical value (to define the critical or rejection region) for a sign test procedure as specified in the problems below. Compute the values using R! Remember to be careful due to the discrete nature of these distributions. Think about: do I need to add 1? Subtract 1? Leave the value alone? We recommend sketches and writing down the desired probabilities of interest before trying to compute them. 
+
+1. n=15, B=5, lower-tailed test. Compute the p-value.
+
+> SOLUTION:
+
+```{r}
+
+```
+
+2. n=15, lower-tailed test. Find the critical value that comes closest to (but without going over) an alpha = 0.05 level test. 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+3. n=18, B = 15, upper-tailed test. Compute the p-value.
+
+> SOLUTION:
+
+```{r}
+
+```
+
+4. n=18, two-tailed test. Find the critical value that comes closest to (but without going over) an alpha = 0.10 level test, with an equal number of potential $B$ values in each tail. (Note that because the binomial with p = 0.5 is symmetric, this is the same as asking for equal tail probabilities.)
+
+> SOLUTION:
+
+```{r}
+
+```
+
+## Practice Problems in R
+
+Complete the following problems based on the provided data. Bear in mind you are allowed to perform parametric procedures if appropriate conditions check out, and this data set has a large sample size. 
+
+```{r}
+abalone <- read.table("https://awagaman.people.amherst.edu/nonparametricstats/abalone.txt",
+                      h = T, sep = ",")
+```
+
+This data set was stored as a comma-delimited text file, so we read it in as a table, and had to use the sep option to tell it about the commas. We will usually see read.table or read.csv commands to load data. 
+
+This data set contains information on 4177 abalones (sea snails). The variables included are:  
+
+* Sex - M, F, and I (infant)  
+
+* Length - mm - Longest shell measurement
+
+* Diameter - mm - perpendicular to length
+
+* Height - mm - with meat in shell
+
+* Whole weight - grams - whole abalone
+
+* Shucked weight - grams - weight of meat
+
+* Viscera weight - grams - gut weight
+
+* Shell weight - grams - after being dried
+
+* Rings - number of rings in the shell - 1.5+rings gives the age in years 
+
+Note that the descriptions do not exactly match the variable names - whoever entered the data shortened the names somewhat. To see the names of variables in the data set, use:
+
+```{r}
+names(abalone)
+```
+
+Now, let's try to address some questions that researchers have about the sea snails. For the two questions below, perform both an appropriate parametric and nonparametric procedure and compare the results. 
+
+> A note on checking conditions 
+
+For the sign test, paired setting, the differences need to have a common median but can come from different populations. For the non-paired setting, they need to come from the same population. 
+
+These assumptions are hard to check, although we have some guidance. If we believe observations are i.i.d. - independent and identically distributed, then they come from the same population. Checking symmetry is doable via a histogram or density plot. In the event that we believe multiple populations might be present however, this can be tricky, as shown below. 
+
+### Question 1 
+
+Are abalones usually longer than they are tall? In other words, is Length > Height?
+
+*Remember to think through the conditions to check before doing any procedure - parametric or nonparametric.*    
+
+> SOLUTION:
+
+```{r}
+# perform both a parametric and nonparametric procedure and compare results
+```
+
+
+### Question 2
+
+Is the usual shucked weight of an abalone different from 1 gram? 
+
+*Remember to think through the conditions to check before doing any procedure - parametric or nonparametric.*          
+
+> SOLUTION:
+
+```{r}
+# perform both a parametric and nonparametric procedure and compare results
+```
+
+
+### Question 3
+
+For this question, we aim to look at the 20 smallest abalones in terms of Height.
+
+```{r}
+cutoff <- sort(abalone$Height)[20] + 0.00000001
+
+# pulling value with tidyverse
+cutoff <- as.numeric(abalone %>%
+  arrange(Height) %>% slice(20) %>%
+  summarize(cutoff = Height + 0.00000001))
+
+```
+
+First, we identify the Height cutoff and add a little bit so we will include the 20th if we ask for heights < the cutoff. In the event of ties, we need to see how many observations we actually end up with. 
+
+```{r}
+abalone2 <- filter(abalone, Height < cutoff)
+dim(abalone2)
+```
+
+So, we are looking at just 24 abalones now. 
+
+We tend to presume the smallest abalones are those still developing. In abalone development, is there evidence based on this data set that these abalones are usually longer than they are wide (diameter)?  
+
+> SOLUTION:
+
+```{r}
+# assess whether a parametric procedure is appropriate
+# if appropriate, perform it 
+# compare to a nonparametric procedure
+# (or perform the nonparametric procedure if a parametric procedure is not appropriate)
+```
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the sign test is used.
+
+Use Google Scholar and do a search for "sign test" and an application area of interest to you. For example, search for '"sign test" archaeology' to look for applications of the sign test in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Ahn, Chul, Fan Hu, and Seung-Chun Lee, "Relative efficiency of unequal versus equal cluster sizes for the nonparametric weighted sign test estimators in clustered binary data," Drug information journal, 46.4, (2012): 428-433.
+
+Fine, Paul VA, et al., "Population genetic structure of California hazelnut, an important food source for people in Quiroste Valley in the Late Holocene," California Archaeology, 5.2, (2013): 353-370.
+
+Keele, Luke, Corrine McConnaughy, and Ismail White, "Strengthening the experimenter’s toolbox: Statistical estimation of internal validity," American Journal of Political Science, 56.2, (2012): 484-499.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+What was the sign test used for in the article? Describe as best you can. For example, what were the hypotheses being tested? 
+
+> SOLUTION:
+
+Does the article state why the sign test was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+
+
+## Data Sources
+
+Nash, W., Sellers, T., Talbot, S., Cawthorn, A., & Ford, W. (1994). Abalone [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C55C7W.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

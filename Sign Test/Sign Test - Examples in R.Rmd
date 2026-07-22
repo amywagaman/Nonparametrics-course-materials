@@ -1,0 +1,233 @@
+---
+title: "Sign Test - Examples in R"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(nsm3data)
+library(tidyverse)
+library(mosaic) 
+library(BSDA)
+```
+
+# Sign Test Examples
+
+## Example 1 - Field Worker Mileage
+
+Story: Do flexible work schedules reduce the demand for resources? The Lake County, Illinois, Health Department experimented with a flexible four-day workweek. For a year, the department recorded the mileage (and other variables) driven by 11 field workers on an ordinary five-day workweek. Then it changed to a flexible four-day workweek and recorded mileage (and other variables) for a year for the same workers in that setting.
+
+We want to know if the four-day workweek resulted in a decrease in typical mileage. 
+
+```{r}
+day5 <- c(2798, 7724, 7505, 838, 4592, 8107, 1228, 8718, 1097, 8089, 3807)
+day4 <- c(2914, 6112, 6177, 1102, 3281, 4997, 1695, 6606, 1063, 6392, 3362)
+ds <- cbind(day5, day4)
+ds <- data.frame(ds)
+summary(ds)
+```
+
+So, we want to focus on the differences.
+
+```{r}
+ds <- mutate(ds, diff = day5 - day4) # adds the difference in a variable called diff
+favstats(~ diff, data = ds)
+```
+
+We should look at the distribution of the differences, as this will help check the normality assumption for the use of parametric procedures. Some graphical displays:
+
+```{r}
+ggplot(aes(x = diff), data = ds) + 
+  geom_histogram(binwidth = 200)
+
+ggplot(aes(x = diff), data = ds) + 
+  geom_density()
+```
+
+Clearly the differences are not normally distributed, and there are only 11 of them. So, we will use a nonparametric test procedure instead of the usual t-test.
+
+Apply the sign test procedure using the *BSDA* package:
+
+```{r}
+with(ds, SIGN.test(day5, day4, alt = "greater")) 
+```
+
+We used the *with* command here because the `SIGN.test` function does not allow a *data = ds* argument. The functions in that package were not written with the *Y ~ X* framework you may be familiar with. We strongly suggest learning how *with* works. You could also use this code, which uses base R syntax to access the variables within the dataset:
+
+```{r}
+# datasetname$variable name structure
+SIGN.test(ds$day5, ds$day4, alt = "greater")
+```
+
+The test statistic is reported as $S=8$. The p-value is reported as 0.1133. You should be able to verify these from hand calculations.  
+
+If you wanted to look at a confidence interval associated with the sign statistic, see section 3.6 of Hollander, Wolfe, and Chicken for details, or just run the `SIGN.test` function but be sure the alternative specified is "two.sided." One-sided alternatives give confidence bounds, not confidence intervals. For example,
+
+```{r}
+with(ds, SIGN.test(day5, day4, alt = "two.sided")) 
+```
+
+We obtain a 95% CI for the difference in mileage between the 5 day workweek and 4 day workweek as (-158.5,1816.2). Note that 0 is in the CI. What does that mean? 
+
+Suppose we wanted a 90% CI instead. We simply use the conf.level option to change the default confidence level, 0.95, to o.9.
+
+```{r}
+with(ds, SIGN.test(day5, day4, alt = "two.sided", conf.level = 0.90)) 
+```
+
+## Example 2 - Chapter 3 (Hollander, Wolfe, and Chicken) Exercises 46 and 71 - Bleeding Times
+
+```{r}
+data("bleedingtime")
+```
+
+We can check the structure of the data.
+
+```{r}
+glimpse(bleedingtime)
+```
+
+We want to test to see if a 600-mg dose of aspirin has no effect on bleeding time versus the alternative that it typically leads to an increase in the bleeding time.  Note that xi is the bleeding time (in seconds) before ingestion of 600 mg of aspirin and yi is the bleeding time (in seconds) 2 hours after administration of the aspirin.
+
+```{r, warning = FALSE}
+# form the differences
+bleedingtime$diff <- bleedingtime$yi -  bleedingtime$xi # base R
+# equivalent to 
+bleedingtime <- mutate(bleedingtime, diff = yi - xi)
+# you could consider using rename to adjust names of xi and yi as well
+
+# we should look at the differences 
+# if they are normally distributed, we could use a parametric test
+# Base R QQ plot to check normality of the differences
+qqnorm(bleedingtime$diff)
+qqline(bleedingtime$diff)
+
+# gg_formula using ggplot2
+gf_qq(~ diff, data = bleedingtime) %>% gf_qqline()
+```
+
+The linear trend indicates that it is reasonable to use the t-test in this situation, but we want to practice the sign test. How do the tests compare? Let's find out. 
+
+```{r}
+# sign test
+with(bleedingtime, SIGN.test(diff, alt = "greater")) 
+```
+
+To get a 94.26% confidence interval for the median difference in bleeding times after administration of aspirin, we simply change the alternative to two sided. Recall that exact confidence levels desired may not be available. 
+
+```{r}
+with(bleedingtime, SIGN.test(diff, alt = "two.sided")) 
+```
+
+Recall that we can use the paired t-test because the differences appear to have a normal distribution.
+
+```{r}
+t.test(bleedingtime$diff, alternative = "greater") # base R
+t.test(~ diff, data = bleedingtime, alternative = "greater")
+```
+
+Note that the two tests give different conclusions here at a significance level of 0.05, but the same conclusion at a significance level of 0.10.  This is an example of why we should always check normality before doing these tests. Which procedure do you think was best to apply here? 
+
+## Example 3 - Chapter 3 (Hollander, Wolfe, and Chicken) Exercise 98 - Oxygen Consumption
+
+```{r}
+data(bedmaking) # access Table 3.15 in NSM3 text
+```
+
+We can check the structure of the data before proceeding with the desired hypothesis test and obtaining the point and interval estimate.
+
+```{r}
+glimpse(bedmaking)
+```
+
+The variables are the patient number and zi, the net oxygen consumption. We'll rename it to get the context.
+
+```{r}
+bedmaking <- rename(bedmaking, NetOxy = zi)
+```
+
+We really only care about the NetOxy (net oxygen consumption) variable. 
+
+Are the observations normally distributed? What do you think? 
+
+```{r}
+# gg_formula using ggplot2
+gf_qq(~ NetOxy, data = bedmaking) %>% gf_qqline()
+
+# add a title if you want
+gf_qq(~ NetOxy, data = bedmaking) %>% 
+  gf_qqline() %>% gf_labs(title = "QQ Plot of Net Oxy Consumption")
+```
+
+We perform the sign test using the following command:
+
+```{r}
+with(bedmaking, SIGN.test(NetOxy, md = 350))
+```
+
+What is your conclusion from the test?
+
+Note that because we performed a two-sided test, the CI is already what we desired.
+
+What is the point estimate of $\theta$?
+
+How does the CI show agreement with the result of the hypothesis test?
+
+We can obtain a CI with a different confidence level by changing the default confidence level in the code:
+
+```{r}
+with(bedmaking, SIGN.test(NetOxy, md = 350, conf.level = 0.90))
+```
+
+How would you expect a 90 percent CI to compare to a 95 percent CI?
+
+Does your expectation match the output? 
+
+## Pandemic Sample Processing Times
+
+We can apply sign test procedures when the data are not paired. These are processing times for lab samples during the pandemic. A recent change in testing procedures has led lab staff to ask for more funding as they believe processing times have increased beyond 18 hours per sample. Assume this is a random sample of recent processing times. 
+
+```{r}
+times <- c(20, 19, 17, 14, 20, 17, 22, 20, 14, 16, 23, 25)
+# gg_formula using ggplot2
+gf_qq(~ times) %>% gf_qqline()
+```
+
+What do you conclude about the normality of the distribution of the processing times? Are nonparametric procedures warranted?
+
+Remember that the value of interest is 18, so we want to do the sign test using that as the value we see if we are greater or less than (or tied). This goes in as the "md" argument, as the median of reference. We didn't need this argument in prior examples as the reference location was 0.  
+
+```{r}
+SIGN.test(times, md = 18, alternative = "greater")
+SIGN.test(times, conf.level = 0.90)
+```
+
+We conclude there is not sufficient evidence to believe the processing time is longer than 18 hours. How does the 90% interpolated CI confirm this conclusion?
+
+## Data Sources
+
+Charles S. Catlin, “Four-day Work Week Improves Environment,” Journal of Environmental Health, Denver, 59:7, 1997.
+
+Bleeding times - nsm3data R package - Hollander, Wolfe, and Chicken, 3rd Edition - Table 3-7. 
+Bedmaking data - nsm3data R package - Hollander, Wolfe, and Chicken, 3rd Edition - Table 3-15, from Flores, A. M., & Zohman, L. R. (1970). Energy cost of bedmaking to the cardiac patient and the nurse. AJN The American Journal of Nursing, 70(6), 1264-1267.
+
+Pandemic sample processing data was simulated.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken (HWC). Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+This file is best used in conjunction with students reading sections 3.4 - 3.6, and 3.8 of HWC. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
