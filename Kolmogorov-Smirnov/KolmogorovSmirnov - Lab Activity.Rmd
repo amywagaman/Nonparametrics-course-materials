@@ -1,0 +1,219 @@
+---
+title: "Kolmogorov Smirnov Tests - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+```
+
+This lab activity will help you practice your skills with Kolmogorov Smirnov (KS) tests. 
+
+# Randomly Generated Comparisons
+
+```{r}
+n <- 5 # number of observations
+X <- rnorm(n, 25, 2)
+Y <- rgamma(n, 5, 1/5) # gamma dist with same mean as normal
+ks.test(X,Y)
+```
+
+Here, the two distributions have the same mean, but one is bell-shaped and the other right-skewed. 
+
+For a sample of size 5 from each distribution, do you detect a difference between them? You can re-run the code several times to see if the answer changes. (Note we did not set a seed here - everyone should get different random samples. If you want to get the same repeated results, set a seed.)
+
+> SOLUTION:
+
+```{r}
+# Run the code above at least 5 times and summarize your findings. 
+# You can just re-run it or copy/paste and then re-run it.
+```
+
+
+Now, try increasing n. For what values of n can you fairly confidently tell that X and Y are coming from different distributions? 
+
+> SOLUTION:
+
+```{r}
+# Use the R code provided above, 
+# but now increase n from 5 to larger values of interest to you.
+```
+
+Suppose we think X comes from a normal distribution. How far off do we need to be when guessing the mean and SD to say that we do not have sufficient evidence that the sample comes from that distribution? Is it worse to be far off guessing the mean or the SD?
+
+```{r}
+X <- rnorm(50, 25, 2)
+favstats(~ X) # see how sample stats look compared to theoretical dist
+ks.test(X, "pnorm", 25, 2) # original guess from knowledge you will not normally have
+ks.test(X, "pnorm", 10, 5) # bad guess
+```
+
+Try different values for the mean and SD to get a sense of when the test starts rejecting the null hypothesis. Summarize what you find. 
+
+> SOLUTION: 
+
+
+
+
+# Real Data Examples
+
+## Iris
+
+```{r}
+data(iris)
+setosa <- filter(iris, Species == "setosa")
+virginica <- filter(iris, Species == "virginica")
+versicolor <- filter(iris, Species == "versicolor")
+```
+
+We briefly return to the iris data set. Two variables weren't examined in the examples - Petal.Width and Sepal.Length. 
+
+Is the overall distribution of Petal.Width approximately normally distributed? If so, with what mean and SD? Use plots and a test to support your response. 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+Is the distribution of Petal.Width for just Setosa approximately normally distributed? If so, with what mean and SD? Use plots and a test to support your response. 
+
+> SOLUTION: 
+
+```{r}
+
+```
+
+
+Finally, we take a look at Sepal.Length and compare across the Species.
+
+Is there evidence that any pair of Species has different distributions for their Sepal.Lengths? Use plots and a test to support your response. 
+
+> SOLUTION: 
+
+```{r}
+
+```
+
+
+## Egyptian Skulls
+
+The next set of examples use a data set on Egyptian skulls from 3 different time periods (period value of 1=4000 BC, 2=3300 BC, and 3=1850 BC). Note that period is currently numeric, but could be converted to a factor, as shown:
+
+```{r}
+skulls <- 
+  read.table("https://awagaman.people.amherst.edu/nonparametricstats/egyptskulls.txt",
+             h = T)
+str(skulls)
+skulls <- mutate(skulls, periodf = factor(period)) # used a new name to not overwrite
+str(skulls)
+```
+
+Measurements are all in mm for maximum breadth of skull (mm), basibregmatic height (bbheight), basialveolar length (bvlength), and nasal height (nasal). Briefly, we consider the individual variables for addressing the main question of interest. 
+
+Is the distribution of breadth approximately normally distributed? If so, with what mean and SD? Use plots and a test to support your response. 
+
+> SOLUTION: 
+
+```{r}
+
+```
+
+Is the distribution of bbheight approximately normally distributed? If so, with what mean and SD? Use plots and a test to support your response. 
+
+> SOLUTION: 
+
+```{r}
+
+```
+
+
+Changes in skull measurements over time may be indicative of breeding between native and immigrant populations, which is a question of interest to social scientists. Address the questions below - using both graphical methods (make pictures) and appropriate hypothesis tests. 
+
+Is there evidence that the breadth measurements from periods 1 and 3 (the periods most separated in time) come from different distributions? Use plots and a test to support your response.
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Is there evidence that the nasal measurements from any pair of periods come from different distributions? Use plots and tests to support your response.
+
+> SOLUTION: 
+
+```{r}
+
+```
+
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the Kolmogorov-Smirnov test is used.
+
+Use Google Scholar and do a search for "kolmogorov smirnov test" (or "KS test") and an application area of interest to you. For example, search for '"Kolmogorov Smirnov" archaeology' to look for applications of the test in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Shaus, Arie, and Eli Turkel, "Writer Identification in Modern and Historical Documents via Binary Pixel Patterns, Kolmogorov–Smirnov Test and Fisher's Method," Electronic Imaging, 29, 2017: 203-211.
+
+Monge, Marco, "Two-Sample Kolmogorov-Smirnov Tests as Causality Tests. A Narrative of Latin American inflation from 2020 to 2022," Revista Chilena de Economía y Sociedad, 2023.
+
+Bisgin, Halil, "Analyzing the attitudes of physical education and sport teachers towards technology," The Anthropologist, 18.3, 2014: 761-764.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+What was the KS test used for in the article? Describe as best you can. For example, what were the hypotheses being tested? Was it a one-sample or two-sample procedure?
+
+> SOLUTION:
+
+Does the article state why the KS test was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+
+
+
+
+## Data Sources
+
+Iris data. Available in R with data(iris). Original sources referenced in R help: 
+
+Fisher, R. A. (1936) The use of multiple measurements in taxonomic problems. Annals of Eugenics, 7, Part II, 179–188. doi:10.1111/j.1469-1809.1936.tb02137.x.
+
+Anderson, Edgar (1935). The irises of the Gaspe Peninsula, Bulletin of the American Iris Society, 59, 2–5.
+
+The Egyptian skull dataset is a subset of a dataset from Thomson, A. and Randall-Maciver, R. (1905) Ancient Races of the Thebaid, Oxford: Oxford University Press. Also found in: Hand, D.J., et al. (1994) A Handbook of Small Data Sets, New York: Chapman & Hall, pp. 299-301. Manly, B.F.J. (1986) Multivariate Statistical Methods, New York: Chapman & Hall. 
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
