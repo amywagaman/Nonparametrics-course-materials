@@ -1,0 +1,242 @@
+---
+title: "Rank Sum Test - Examples in R"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(agricolae)
+library(coin) # optional for alternative function 
+```
+
+# Rank Sum Test Examples
+
+The functions associated with the rank sum statistic are all in the stats package, which is auto-loaded.
+
+
+# Relationship between test statistics and using R functions
+
+The test statistic for the Wilcoxon rank sum test is denoted $W$ in the  Hollander, Wolfe, and Chicken text. In this setting, there are also statistics $U$, the Mann-Whitney U Statistic, and $U'$, which is a shifted version of $U$ and which is read aloud as U prime. To understand hand calculations and null distributions, be sure you know what statistic you are working with - most of the R functions illustrated below use $U'$, not $W$!
+
+What are the relationships between these statistics? In the case of no ties, 
+$$W = U + (n(n+1)/2)$$
+and,
+$$U' = mn - U$$
+where $m$ is the number of X's and $n$ is the number of Y's.
+$U$ and $U'$ have the same mean and variance.
+
+Suppose we have $W = 7, m = 4$, and $n = 3$. Then,
+
+$$7 = U + 3(4)/2 \implies U = 1$$
+
+This then tells us that,
+
+$$U' = 4(3) - 1 = 11.$$
+
+So, if we wanted to find the probability of obtaining a W value less than or equal to 7, we could find it using *pwilcox* this way:
+
+$$P(W \leq 7) = P(U' \geq 11) = 1 - P(U' \leq 10) = 1 - pwilcox(10, 4, 3).$$
+
+That is, you first specify the probability in terms of $W$, then, we need to convert to $U'$ values (through $U$) and we use the complement rule to get a lower-tail cumulative probability that the function can do easily (optional to write out if you can do it in your head). 
+
+```{r}
+1 - pwilcox(10, 4, 3)
+```
+
+Note that smaller values of $W$ mean smaller values for $U$, but larger values for $U'$.
+
+# Example 1 - Obtaining a null distribution for W
+
+Imagine we have $m=4, n=2$. Thus, $m*n = 8$. The distribution function *dwilcox* gives us values for $U'$, which we can turn into $U$'s, and then into $W$'s.
+
+```{r}
+m <- 4
+n <- 2
+mn <- m*n;
+probs <- dwilcox(0:mn, m, n) # probabilities associated with 0:8 for U'
+Uprime <- 0:mn # the values of Uprime possible
+U <- mn - Uprime # corresponding values of U
+W <- U + n*(n+1)/2 # and W
+```
+
+So, now we just print out values of $W$ with their corresponding probabilities.
+
+```{r}
+rbind(W, round(probs, 4))
+```
+
+You can sort to put the values of W in increasing rather than decreasing order, but these values should match what you get via hand calculation. 
+
+# Example 2 - Test Prep Scores
+
+In this example, we are comparing percentile test scores for students who enrolled in a test prep course taught using the traditional method versus those on a new method. All 7 students had similar test percentiles on a pre-test. 
+
+Recall that the rank sum procedure assumes a shift model is reasonable for the groups. It can help to check that condition, provided you have enough data points to make reasonable plots. Overlaid density plots or histograms colored by group may help. Here, we only have 3 observations in one group and 4 in another, so a plot to check this condition does not really make sense. 
+
+```{r}
+newmethod <- c(78, 88, 92, 93)
+tradmethod <- c(73, 76, 81)
+wilcox.test(newmethod, tradmethod, alternative = "greater")
+wilcox.test(newmethod, tradmethod, conf.int = TRUE, conf.level = 0.90)
+```
+
+The reported test statistic ``W'' is 11. Note that this is in fact $U'$. The function used to perform the test is the same we had for the signed rank test, but here, we don't tell the function that the values are paired (and we don't feed it just a single set of differences).
+
+```{r}
+realW <- (4*3-11)+3*4/2; realW # computed U=mn-U' in the computation to get W
+```
+
+This matches the 7 for the $W$ test statistic that you can get via hand computation (try it!). Note that this is only to understand the relationship between test statistics. If you were just doing the test, you'd have an appropriate p-value already (the one-sided one). You'd reject at alpha=0.1, but not at alpha=0.05. 
+
+If you want the confidence interval, run the procedure two-sided.  The estimate of delta reported is 12, and the 90% CI is (-3, 20).  We note that the computer is doing computations for new-trad (the order of the groups given to the function), so bear that in mind for your interpretations.
+
+## Alternative command
+
+There is an alternative command to run the rank sum procedure in a package named *coin*. This requires the data to be in a different format. One column for the quantitative variable and one column for the group variable. This is a common data format (called the long format, as opposed to wide format). 
+
+If your data starts in the wide format, there are multiple ways to get it into long format. Here is just one example in this context. You could also explore pivots. Ask your instructor if you want to learn more about different data formats. 
+
+```{r}
+newdata <- data.frame(c(newmethod, tradmethod),
+                      factor(c(rep(1, length(newmethod)), 
+                               rep(2, length(tradmethod)))))
+colnames(newdata) <- c("Score","Method")
+
+# without exact option, it uses an approximation
+wilcox_test(Score ~ Method, data = newdata, distribution = "exact") 
+```
+
+Note that this gives you the p-value and a different (standardized) form of the test statistic, so it would only be useful for p-values. 
+
+# Example 3 - Machine Repair
+
+An automatic refill machine (16 oz expected) just underwent repairs. Was there a shift before/after in oz delivered?
+
+```{r}
+before <- c(16.61, 16.22, 15.34, 15.88, 16.05)
+after <- c(15.81, 15.89, 16.02, 16.19, 16.06)
+wilcox.test(after, before, conf.int = TRUE) # after, before does Y-X as desired
+```
+
+We observe a W=11 from the output, just remember this is U', and can be converted to W, from your book's notation.
+
+```{r}
+realW <- (5*5-11) + 5*6/2; realW # computed U=mn-U' in the computation to get W
+```
+
+The reported (2-sided) p-value is 0.8413 (huge!). We do not have sufficient evidence of a shift in distribution between before and after the repairs.
+
+The default CI reported is at a 95 percent level and is (-0.59, 0.68), nearly symmetric around 0. Finally the point estimate is -0.03. Recall due to the order we chose this is "after-before", so the before values were slightly larger, though definitely not significantly so. 
+
+## Alternative command option
+
+Illustrated with alternative command just to get the p-value:
+
+```{r}
+newdata2 <- data.frame(c(before, after),
+                       factor(c(rep(1, length(before)),rep(2, length(after)))))
+colnames(newdata2) <- c("Amount","Time")
+
+# without exact option, it uses an approximation
+wilcox_test(Amount ~ Time, data = newdata2, distribution = "exact") 
+```
+
+# Finding Cutoffs
+
+Here, we will run through two examples of finding a test procedure cutoff that will yield a particular alpha. 
+
+## Lower-tailed test using W.
+
+Assume we have $m=8$, and $n=4$. Suppose we want alpha no larger than 0.04. The test is going to be lower-tailed using $W$, which is lower-tailed for $U$, but which would be upper-tailed for $U'$. Thus, we want to examine large values of $U'$ and see which has 0.96 below it (or just over that). The max value of $U'$ is $m*n$, so that gives us a range to examine.
+
+```{r}
+qwilcox(0.96, m=8, n=4) # suggests 26
+1-pwilcox(24:32, m=8, n=4)
+1-pwilcox(25, m=8, n=4) # P(U'>=26)=1-P(U'<=25)
+```
+
+Notice that when we use 26 $U'$, we get an alpha = 0.0545. So we need to shift up.
+
+```{r}
+1-pwilcox(26, m=8, n=4)
+```
+
+Using 27 for $U'$, we see alpha = 0.0363. Now we just convert to $U$ and $W$.
+
+```{r}
+realW <- (8*4-27)+4*(5)/2; realW
+```
+
+After converting to $W$, we see that we would reject the null if $W$ is less than or equal to 15.
+
+## Upper-tailed test using W.
+
+Assume we have $m=n=6$, and that we desire alpha = 0.10, but not over. If the test is going to be upper-tailed using $W$, then it is upper-tailed for $U$ but lower-tailed for $U'$. $m*n$=36, and we are looking in the lower tail.
+
+```{r}
+qwilcox(0.10, m=6, n=6) # suggests 10
+pwilcox(10, m=6, n=6) # yields alpha 0.12; need to drop to 9
+pwilcox(9, m=6, n=6) # shows that using 9 gives alpha = 0.0898
+pwilcox(0:10, m=6, n=6) # shows possible alphas for U' from 0 to 10
+```
+
+We want $U'$=9. Now we convert to $W$.
+
+```{r}
+realW <- (6*6-9)+6*7/2; realW
+```
+
+We should reject the null hypothesis if $W$ is equal to or greater than 48.
+
+## van der Waerden's test
+
+van der Waerden's test is described as an alternative procedure in 4.1 (Comment 12 in Hollander, Wolfe, and Chicken). It also tests for a shift in the distributions. It is a lesser known but popular competitor to the rank sum procedure. Some relative efficieny comparisons of the two procedures are available in 4.5 of Hollander, Wolfe, and Chicken. 
+
+To run van der Waerden's test, we need the agricolae package. Here, we illustrate it on the two data sets in the examples above. You enter the variable of interest as one column and the group variable as another, i.e. long format that the coin alternative function wanted too. Here is another way to get the data into this format (for small data sets). We are using c(), which stands for concatenate. The procedure only reports 2-sided p-values. 
+
+```{r}
+# be sure agricolae is loaded
+testmethod <- waerden.test(c(newmethod, tradmethod), c(rep(1, 4), rep(2, 3)))
+
+testmethod$statistics # p-value is denoted as p.chisq
+```
+
+Here, the two-sided p-value is 0.078285, so the one-sided p-value would be less than 0.05, and we would have slightly different results than the rank sum procedure. 
+
+Similarly, for the machine repair data, we find: 
+
+```{r}
+# be sure agricolae is loaded
+testmachine <- waerden.test(c(after, before), rep(1:2, each = 5))
+
+testmachine$statistics # p-value is denoted as p.chisq
+```
+
+This (2-sided) p-value is similar to what we had above, and is clearly large, so we cannot reject the null hypothesis. 
+
+
+## Data Sources
+
+Test prep scores data was simulated. 
+
+Machine Repair data was simulated.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

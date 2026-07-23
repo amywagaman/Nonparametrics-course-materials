@@ -1,0 +1,269 @@
+---
+title: "Rank Sum Test - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(agricolae) # van der Waerden's
+library(Stat2Data) # for data
+library(car) # for data
+```
+
+# Checking for Shift Model vs. General Procedures
+
+How do you tell if the shift model is reasonable? Make pictures - either univariate or overlaid for the two variables. It's easier to tell with more observations. You can also use common sense and logic. For example, scores tend to be skewed left, while salaries are skewed right. You could look for a shift in salary, and that would be reasonable (provided you thought the spread was constant). There are more general procedures that don't require shift models. So, briefly, we should consider which procedures to use when. 
+
+Consider the following sets of observations in terms of all possible pairs, and see which you think would lead you to do the shift test and which would be general procedures. Example code is provided for the first pair. 
+
+```{r}
+X <- c(4.26, 9.35, 7.96, 8.35, 9.89, 3.09, 4.79, 7.70, 7.99,
+       0.99, 6.34, 0.95, 6.47, 4.99, 6.79)
+Y <- c(10.72, 12.40, 7.13, 9.10, 6.78, 7.45, 5.54, 10.81, 13.95, 10.93,
+       NA, NA, NA, NA, NA)
+W <- c(4, 5, 6, 5, 5, 11, 7, 10, 8, 7, 8, 4, 11, 9, 12)
+U <- c(1.50, 0.14, 3.04, 3.06, 8.58, 0.67, 0.19, 3.56, 6.61, 4.01,
+       NA, NA, NA, NA, NA)
+
+tmpdata <- data.frame(cbind(X, Y, W, U))
+```
+
+Would testing X vs. Y be more appropriate using a shift model or a more general procedure?
+
+> SOLUTION
+
+```{r}
+# example code, may not need all of these plots
+ggplot(data = tmpdata, mapping = aes(x = X)) + geom_density()
+ggplot(data = tmpdata, mapping = aes(x = Y)) + geom_density()
+
+tmpdata2 <- data.frame(obs = c(X,Y), 
+                       group = as.factor(c(rep(1,length(X)), rep(2,length(Y)))))
+ggplot(data = tmpdata2, mapping = aes(x = obs)) + 
+  geom_density(aes(color = group))
+```
+
+
+How about X vs. W or X vs. U?
+
+> SOLUTION
+
+```{r}
+
+```
+
+What about Y vs. W or Y vs. U?
+
+> SOLUTION
+
+```{r}
+
+```
+
+
+Finally, what about W vs. U?
+
+> SOLUTION
+
+```{r}
+
+```
+
+# Example Analyses for You to Try
+
+```{r}
+data(Day1Survey) 
+names(Day1Survey)
+```
+
+Data collected on the first day of a statistics course contains many variables about the students in the course.
+
+Does the mean/center of resting pulse differ by sex? Use appropriate procedures - one nonparametric and one parametric. Do the procedures agree? 
+
+> SOLUTION
+
+```{r}
+# code for Exploratory data analysis (EDA) provided
+ggplot(data = Day1Survey, mapping = aes(x = Pulse)) + 
+  geom_density(aes(color = Sex))
+
+favstats(~ Pulse | Sex, data = Day1Survey)
+# insert test code
+```
+
+
+Does the mean/center of height differ by sex? Use appropriate procedures - one nonparametric and one parametric. Do the procedures agree? 
+
+> SOLUTION
+
+```{r}
+
+```
+
+
+Do the shift models appear appropriate for the nonparametric procedures above? How about the conditions for the parametric methods you applied?
+
+> SOLUTION
+
+
+
+# Second Example Analysis for You to Try
+
+```{r}
+data(Salaries)
+# ?Salaries #remove the hashtag, i.e., the # symbol, to learn about the data
+names(Salaries)
+```
+
+We want to see if there is any evidence that male professors were earning more than the female professors (in the description, this is listed as the concern). Assess this, using at least two nonparametric (hint, you have two from 4.1-4.3 so far!) and one parametric procedure. Note that this analysis assumes a shift model is appropriate, and you can comment on the validity of that assumption. Here is a plot to help you get started.
+
+```{r}
+ggplot(data = Salaries, mapping = aes(x = salary)) + 
+  geom_density(aes(color = sex))
+```
+
+> SOLUTION
+
+```{r}
+
+```
+
+
+# Comparing Shift Models and Test Procedures
+
+We will generate some random data in order to investigate differences between the related test procedures for shift models and the t-test. We will also include some data that is not appropriate for a shift model to illustrate that other methods are needed.
+
+```{r}
+set.seed(225)
+X <- rnorm(25, 50, 5)
+Y <- rnorm(25, 45, 5) # shift model - centers differ, dist and spread same
+Z <- rgamma(25, 3.2, 0.05) # non-shift model, center is above X's theoretically
+```
+
+## Plots of the generated data
+
+```{r}
+var <- c(X, Y, Z)
+group <- as.factor(c(rep(1:3, each = 25)))
+ds <- data.frame(var, group)
+ggplot(data = ds, mapping = aes(x = var)) + 
+  geom_density(aes(color = group))
+```
+
+## Summary Stats
+
+```{r}
+favstats(var ~ group, data = ds)
+```
+
+Now we look at the test procedures. Theoretically, testing X vs. Y, or X vs. Z, or Y vs. Z should ALL result in rejections of null hypotheses of equal centers, but in some cases we have a shift model and in other cases we don't.
+
+## Wilcoxon Rank Sum Procedures
+
+```{r}
+wilcox.test(X, Y) # shift model valid
+wilcox.test(X, Z) # shift model not valid
+wilcox.test(Y, Z) # shift model not valid
+```
+
+What do you notice about these test results? For which tests do you reject the null hypothesis at reasonable significance levels? 
+
+> SOLUTION
+
+
+
+## T-test 
+
+```{r}
+t.test(X, Y)
+t.test(X, Z)
+t.test(Y, Z)
+```
+
+What do you notice about these test results? For which tests do you reject the null hypothesis at reasonable significance levels? 
+
+> SOLUTION
+
+## van der Waerden's Test
+
+```{r}
+testXY <- waerden.test(c(X,Y), rep(1:2, each = 25))  # be sure agricolae is loaded
+testXY$statistics # p-value is middle entry
+
+testXZ <- waerden.test(c(X,Z), rep(1:2, each = 25))  
+testXZ$statistics # p-value is middle entry
+
+testYZ <- waerden.test(c(Y,Z), rep(1:2, each = 25))  
+testYZ$statistics # p-value is middle entry
+```
+
+What do you notice about these test results? For which tests do you reject the null hypothesis at reasonable significance levels? 
+
+> SOLUTION
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the rank sum test is used.
+
+Use Google Scholar and do a search for "rank sum test" (or "Wilcoxon rank sum" or "Mann-Whitney U") and an application area of interest to you. For example, search for '"rank sum" archaeology' to look for applications of the rank sum test in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+April Batson Malone, "The Effects of Live Music on the Distress of Pediatric Patients Receiving Intravenous Starts, Venipunctures, Injections, and Heel Sticks," Journal of Music Therapy, 33.1, Spring 1996: 19–33, https://doi.org/10.1093/jmt/33.1.19.
+
+Guilbeault, Douglas, Joshua Becker, and Damon Centola, "Social learning and partisan bias in the interpretation of climate trends," Proceedings of the National Academy of Sciences, 115.39, 2018: 9714-9719.
+
+Padmanathan, Prianka, et al., "Social media use, economic recession and income inequality in relation to trends in youth suicide in high-income countries: a time trends analysis," Journal of affective disorders, 275, 2020: 58-65.
+
+Shinde, Vasant S., et al., "Archaeological and anthropological studies on the Harappan cemetery of Rakhigarhi, India," PLoS One, 13.2, 2018: e0192299.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+What was the rank sum test used for in the article? Describe as best you can. For example, what were the hypotheses being tested? 
+
+> SOLUTION:
+
+Does the article state why the rank sum test was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+
+
+
+## Data Sources
+
+Day1Survey data is from the Stat2Data pkg in R. 
+
+Salaries data is from the carData pkg in R.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
