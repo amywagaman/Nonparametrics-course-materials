@@ -1,0 +1,190 @@
+---
+title: "Fligner-Poli - Lab Activity - Solution"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(agricolae) 
+library(Stat2Data) # for data
+library(car) # for data 
+library(nsm3data) # for data
+```
+
+This lab uses the same data sets as those for the rank sum procedure. The data set descriptions are very brief and are repeated below. 
+
+# Return to the survey data we used for the rank sum procedure.
+
+```{r}
+data(Day1Survey) 
+```
+
+Data collected on the first day of a statistics course contain many variables about the students in the course.
+
+Does the mean/center of resting pulse differ by sex? Use the Fligner-Policello procedure and compare with the appropriate t-test. Do the procedures agree? Do you have concerns about conditions for either procedure?
+
+> SOLUTION:
+
+```{r}
+ggplot(data = Day1Survey, mapping = aes(x = Pulse)) + 
+  geom_density(aes(color = Sex))
+favstats(~ Pulse | Sex, data = Day1Survey)
+
+set.seed(225)
+pFligPoli(Day1Survey$Pulse[Day1Survey$Sex == "F"], 
+          Day1Survey$Pulse[Day1Survey$Sex == "M"]) 
+
+t.test(Pulse ~ Sex, data = Day1Survey)
+```
+
+The female and male distributions of pulse have similar SDs but slightly different shapes. So, we might suggest a general procedure test, not one that uses a shift model. If you aren't as worried about the shape issue, you could use the shift model. The female distribution does have two peaks with different heights/densities though, which may cause concerns about whether the underlying distribution is symmetric around its median. For the t-test, the sample sizes are < 30, and the female pulse values are not normally distributed, so we may have concerns there. 
+
+Both the Fligner-Policello test and parametric t-test have very large p-values. We do not have significant evidence that mean/center resting pulse differs by sex.
+
+Does the mean/center of height differ by sex? Use the Fligner-Policello procedure and compare with the appropriate t test. Do the procedures agree? Do you have concerns about conditions for either procedure?
+
+> SOLUTION:
+
+```{r}
+# reuse and edit the code from above!
+ggplot(data = Day1Survey, mapping = aes(x = Height)) + 
+  geom_density(aes(color = Sex))
+favstats(~ Height | Sex, data = Day1Survey)
+
+set.seed(225)
+pFligPoli(Day1Survey$Height[Day1Survey$Sex == "F"], 
+          Day1Survey$Height[Day1Survey$Sex == "M"]) 
+
+t.test(Height ~ Sex,data = Day1Survey)
+```
+
+The female and male distributions of height have slightly different SDs (female SD is larger). Both distributions look similar - two peaks with the smaller peak on the right. The peaks not being equal may cause concerns with symmetry, but the spread issue means the shift model is not appropriate, so a general test may be better than assuming a shift model. For the t-test, the sample sizes are small (< 30), and neither distribution appears to be normally distributed. 
+
+Both the Fligner-Policello test and parametric t-test have extremely tiny p-values. The simulated p-value for the Fligner-Policello test is zero with many seed options. Assuming we believe the conditions hold, we have significant evidence that mean/center height differs by sex.
+
+# Return to the salary data we used for the rank sum procedure.
+
+```{r}
+data(Salaries)
+# ?Salaries # remove the starting comment to learn about the data
+names(Salaries)
+```
+
+We want to see if there is any evidence that male professors were earning more than the female professors (in the description, this is listed as the concern). Use the Fligner-Policello procedure and the appropriate t test to address the primary question of interest here. Do you have concerns about conditions for either procedure?
+
+> SOLUTION:
+
+```{r}
+favstats(salary ~ sex, data = Salaries)
+
+ggplot(data = Salaries, mapping = aes(x = salary)) + 
+  geom_density(aes(color = sex))
+```
+
+The shift model (for the rank sum procedure) may not be reasonable because the spreads are very different and the female distribution has a second peak more pronounced than the male distribution. There may be concerns with the symmetry condition for the Fligner-Policello procedure. Finally, there are over 300 male professors in the data set but only 39 female professors. With the skew, that smaller sample size might cause an issue for the t-test. But we can see what the tests would give us!
+
+```{r}
+set.seed(225) # because Fligner-Policello will use simulation with these n's
+pFligPoli(Salaries$salary[Salaries$sex == "Female"], 
+          Salaries$salary[Salaries$sex == "Male"])
+
+t.test(salary ~ sex, data = Salaries, alternative = "less")
+```
+
+Both tests have very small p-values and indicate that there is significant evidence that the median/mean female salary is less than the corresponding male salary. 
+
+
+How do the results of the Fligner-Policello procedure compare with your results for the Wilcoxon rank sum procedure?
+
+> SOLUTION:
+
+The p-values are both way below 0.05 (refer to past lab for rank sum result), so the results of these tests are the same.
+
+# Your Own Example
+
+Pick a data set of your choice or simulate data for two groups and compare all of the two sample test procedures that we have studied.  Comment on the similarities and differences in your results. Do you have concerns about conditions for any procedure?
+
+You could explore other data sets in the Stat2Data or carData packages in R if they have the appropriate structure/context. Use a search online or the R help menu to get insights about these data sets or those in other packages already in R!
+
+> SOLUTION:
+
+Answers will vary, depending on the data set chosen.
+
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the Fligner-Policello test is used.
+
+Use Google Scholar and do a search for "Fligner-Policello test" (or "Fligner-Policello procedure") and an application area of interest to you. For example, search for '"Fligner-Policello" archaeology' to look for applications of the test in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Rueda, Ximena, et al., "Beyond proximate and distal causes of land-use change: linking Individual motivations to deforestation in rural contexts," Ecology & Society, 24.1, 2019.
+
+Reuben, Julia, Rhema Vaithianathan, and Rachel Berger, "Identifying infants at risk of sudden unexpected death with an automated predictive risk model," Child Abuse & Neglect, 151, 2024: 106716.
+
+Ahedo, Virginia, et al., "Quantifying the relationship between food sharing practices and socio-ecological variables in small-scale societies: A cross-cultural multi-methodological approach," PloS one, 14.5, 2019: e0216302.
+
+Williamson, Derek, "Nonparametric Statistical Tests Comparing First Flush and Composite Samples from the National Stormwater Quality Database," 2000.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Answers will vary. 
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+Answers will vary. 
+
+
+What was the Fligner-Policello test used for in the article? Describe as best you can. For example, what were the hypotheses being tested? 
+
+> SOLUTION:
+
+Answers will vary. 
+
+
+Does the article state why the Fligner-Policello test was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Answers will vary. 
+
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned? For example, did they use the rank sum test as well as Fligner-Policello?
+
+> SOLUTION: 
+
+Answers will vary. 
+
+## Data Sources
+
+Day1Survey data is from the Stat2Data pkg in R. 
+
+Salaries data is from the carData pkg in R.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

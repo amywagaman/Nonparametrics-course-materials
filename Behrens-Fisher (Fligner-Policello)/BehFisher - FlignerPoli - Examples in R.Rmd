@@ -1,0 +1,114 @@
+---
+title: "Behrens-Fisher (Fligner Policello) - Examples in R"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(BSDA)
+library(nsm3data)
+```
+
+# Fligner-Policello Statistic Examples
+
+The functions associated with the Fligner-Policello statistic are all in the NSM3 package.
+
+These examples may reference results in the rank sum examples file, as that is a related procedure.
+
+## Example 1 - Exercise 4.42 in Hollander, Wolfe, and Chicken. 
+
+The data from Table 4.2 (Hollander, Wolfe, and Chicken) are available in the nsm3data package with a name of alcohol. Compare the alcohol intake for the two groups (control and sst).  
+
+```{r}
+data(alcohol)
+# glimpse(alcohol)
+```
+
+Note that there are missing values in the data, requiring some attention in the code. This is mostly just because the data is in wide format - there are two columns for the data from the different groups rather than a column for the value and a column for the group, and the groups have different sizes.
+
+For the Fligner-Policello procedure, the condition is that we believe the samples come from continuous populations which are symmetric around their medians (which can be different). We can assess this with plots. 
+
+```{r, warning = FALSE}
+gf_dens(~ control, data = alcohol)
+gf_dens(~ sst, data = alcohol)
+```
+ 
+What do you think about the condition being met here? 
+
+Note that the pFligPoli command takes as inputs both vectors of data. It does NOT have options to set the alternative direction for the test. Hence the output is always upper-tailed as well as two-tailed. This can be confusing if you are trying to do a less than alternative (i.e. negative test statistic). If you need the lower tail, do 1 minus the upper-tail p-value or divide the two-sided p-value by 2. 
+
+Depending on the data set size, the pFligPoli function may be able to find the p-value exactly or it may need to do Monte Carlo simulation. If it simulates, the output states "Monte Carlo (Using 10000 Iterations)" (default number of simulations). If it doesn't simulate, the output will say "Exact" instead.  If the function is using Monte Carlo simulation, a seed should be set to ensure reproducibility. Changing the seed may change your p-value, but shouldn't change the computation of the test statistic. Be sure you understand why this is the case!
+
+In this example, it uses simulation, so we set a seed. 
+
+```{r}
+set.seed(225)
+pFligPoli(alcohol$control, na.omit(alcohol$sst), method = "Monte Carlo")
+```
+
+## Example 2 - Test Prep Scores
+
+In this example, we are comparing percentile test scores for students who enrolled in a test prep course taught using the traditional method versus those on a new method. All 7 students had similar test percentiles on a pre-test. 
+
+With only 4 observations in one group and three in the other, it doesn't make sense to try to check conditions with plots. We assume they hold to proceed. 
+
+```{r}
+newmethod <- c(78, 88, 92, 93)
+tradmethod <- c(73, 76, 81)
+wilcox.test(newmethod, tradmethod, alt = "greater") # shift test, recall this result
+# The data set is small enough that an exact procedure is run
+# No seed is necessary since it doesn't need to estimate the p-value. 
+pFligPoli(newmethod, tradmethod) # general procedure - new method
+1-0.9714
+```
+
+At $\alpha$ = 0.05, this procedure indicates that the new method scores are greater than the traditional method scores. This is a different conclusion than we reached with the shift-based procedure at $\alpha$=0.05.
+
+## Example 3 - Machine Repair
+
+An automatic refill machine (16 oz expected) just underwent repairs. Was there a shift before/after in oz delivered?
+
+```{r}
+before <- c(16.61, 16.22, 15.34, 15.88, 16.05)
+after <- c(15.81, 15.89, 16.02, 16.19, 16.06)
+```
+
+With 5 observations per group, it's still a stretch to use plots to check conditions, though you could make them if you like. 
+
+```{r}
+wilcox.test(after, before) # after, before does Y-X as desired
+# runs exact due to data set size; remember to set a seed if it does simulation
+pFligPoli(after, before)
+```
+
+Here, the conclusions reached by the shift and general procedures are the same. We want the two-sided procedure, and the p-value is large. We do not have sufficient evidence to conclude that the center has changed from before to after the repairs to the machine. 
+
+
+## Data Sources
+
+Alcohol data is Table 4.2 from Hollander, Wolfe, and Chicken. 
+
+Test prep scores data were simulated. 
+
+Machine Repair data were simulated.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. The material in this file references section 4.4 of Hollander, Wolfe, and Chicken.
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

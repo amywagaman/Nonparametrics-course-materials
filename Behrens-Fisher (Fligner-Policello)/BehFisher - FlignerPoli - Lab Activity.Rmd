@@ -1,0 +1,133 @@
+---
+title: "Fligner-Poli - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(agricolae) 
+library(Stat2Data) # for data
+library(car) # for data
+library(nsm3data) # for data
+```
+
+This lab uses the same data sets as those for the rank sum procedure. The data set descriptions are very brief and are repeated below. 
+
+# Return to the survey data we used for the rank sum procedure.
+
+```{r}
+data(Day1Survey) 
+```
+
+Data collected on the first day of a statistics course contain many variables about the students in the course.
+
+Does the mean/center of resting pulse differ by sex? Use the Fligner-Policello procedure and compare with the appropriate t test. Do the procedures agree? Do you have concerns about conditions for either procedure?
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Does the mean/center of height differ by sex? Use the Fligner-Policello procedure and compare with the appropriate t test. Do the procedures agree? Do you have concerns about conditions for either procedure?
+
+> SOLUTION:
+
+# Return to the salary data we used for the rank sum procedure.
+
+```{r}
+data(Salaries)
+# ?Salaries # remove the starting comment to learn about the data
+names(Salaries)
+```
+
+We want to see if there is any evidence that male professors were earning more than the female professors (in the description, this is listed as the concern). Use the Fligner-Policello procedure and the appropriate t test to address the primary question of interest here. Do you have concerns about conditions for either procedure?
+
+> SOLUTION:
+
+```{r}
+
+```
+
+How do the results of the Fligner-Policello procedure compare with your results for the Wilcoxon rank sum procedure?
+
+> SOLUTION:
+
+# Your Own Example
+
+Pick a data set of your choice or simulate data for two groups and compare all of the two sample test procedures that we have studied.  Comment on the similarities and differences in your results. Do you have concerns about conditions for any procedure?
+
+You could explore other data sets in the Stat2Data or carData packages in R if they have the appropriate structure/context. Use a search online or the R help menu to get insights about these data sets or those in other packages already in R!
+
+> SOLUTION:
+
+```{r}
+
+```
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the Fligner-Policello test is used.
+
+Use Google Scholar and do a search for "Fligner-Policello test" (or "Fligner-Policello procedure") and an application area of interest to you. For example, search for '"Fligner-Policello" archaeology' to look for applications of the test in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Rueda, Ximena, et al., "Beyond proximate and distal causes of land-use change: linking Individual motivations to deforestation in rural contexts," Ecology & Society, 24.1, 2019.
+
+Reuben, Julia, Rhema Vaithianathan, and Rachel Berger, "Identifying infants at risk of sudden unexpected death with an automated predictive risk model," Child Abuse & Neglect, 151, 2024: 106716.
+
+Ahedo, Virginia, et al., "Quantifying the relationship between food sharing practices and socio-ecological variables in small-scale societies: A cross-cultural multi-methodological approach," PloS one, 14.5, 2019: e0216302.
+
+Williamson, Derek, "Nonparametric Statistical Tests Comparing First Flush and Composite Samples from the National Stormwater Quality Database," 2000.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+What was the Fligner-Policello test used for in the article? Describe as best you can. For example, what were the hypotheses being tested? 
+
+> SOLUTION:
+
+Does the article state why the Fligner-Policello test was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned? For example, did they use the rank sum test as well as Fligner-Policello?
+
+> SOLUTION: 
+
+
+
+## Data Sources
+
+Day1Survey data is from the Stat2Data pkg in R. 
+
+Salaries data is from the carData pkg in R.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
