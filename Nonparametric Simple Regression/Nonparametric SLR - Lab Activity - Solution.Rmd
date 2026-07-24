@@ -1,0 +1,439 @@
+---
+title: "Nonparametric SLR - Lab Activity - Example Solution"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(SuppDists)
+library(rmutil) # install for double exponential
+```
+
+# Examples for Nonparametric Simple Linear Regression (includes parametric regression comparison)
+
+## Highway Runoff and Rainfall
+
+An article in the 1998 Journal of Environmental Engineering studied highway runoff in Austin, Texas by looking at the relationship between rainfall volume (in cubic meters) and runoff volume (also in cubic meters) for different locations. The dataset is loaded next. 
+
+```{r, warning = FALSE}
+rainrun <- 
+  read.table("https://awagaman.people.amherst.edu/nonparametricstats/rainrun.txt",
+             h = T)
+summary(rainrun)
+dim(rainrun)
+
+ggplot(data = rainrun, aes(x = rainfall, y = runoff)) +
+  geom_point() +
+  geom_lm() # fits parametric regression line and shows points
+```
+
+First, we'll fit the usual parametric linear regression model.
+
+```{r}
+mod1 <- lm(runoff ~ rainfall, data = rainrun) # fit model Y~X
+msummary(mod1) # model output
+mplot(mod1, which = 1) # residual plot to check assumption of constant variance
+mplot(mod1, which = 2) # qq plot to check normality of residuals (required for errors)
+```
+
+What is the equation of the fitted parametric regression line? 
+
+> SOLUTION: 
+
+The line is $\text{predrunoff}=-1.12830+0.82697*\text{rainfall}$.
+
+Do you see any major issues with the assumptions for the parametric test here?
+
+> SOLUTION:
+
+The QQ plot looks roughly linear, though there are some departures from this overall linear trend. The residuals plot might suggest increasing variance (issues with constant variance), but it's hard to tell with 15 observations.
+
+Is there a significant linear relationship between rainfall and runoff volume?
+
+> SOLUTION:
+
+The test statistic for the slope is t=22.642, and the corresponding p-value is tiny. Yes, the linear relationship appears to be statistically significant. 
+
+Now, compare the results to what you find using a nonparametric linear regression model. You will need to provide the code to fit the model.
+
+> SOLUTION:
+
+```{r}
+# use class examples to help!
+# note, increasing r to 6 still leaves the intercept estimate at 0
+with(rainrun, theil(rainfall, runoff, beta.0 = 0, type = "t"))
+```
+
+What is the equation of the fitted nonparametric regression line? 
+
+> SOLUTION:
+
+$\text{Predicted Median Runoff}= 0+0.833*\text{rainfall}$.
+
+Is there a significant linear relationship between rainfall and runoff volume based on the nonparametric procedure? Is this result consistent with the parametric test results?
+
+> SOLUTION:
+
+The linear relationship does appear to be statistically significant again. The p-value is approximately 0 (to 4 decimal places).
+
+```{r}
+2*pKendall(-0.962, N = 15) # manually compute p-value
+```
+
+Predict the runoff (response) when the rainfall value is 42, using both models. How should you interpret the predicted values? (There should be a difference.)
+
+> SOLUTION:
+
+```{r}
+mod1pred<- -1.12830 + 0.82697*42; mod1pred # parametric
+mod2pred<- 0 + 0.833*42; mod2pred # nonparametric
+```
+
+The parametric model says the average runoff expected when $\text{rainfall}=42$ is 33.60444 cubic meters. The nonparametric model says the *median* runoff expected when $\text{rainfall}=42$ is 34.986 cubic meters. 42 is in the range of observed X values so this is not extrapolation. 
+
+
+## Lichen
+
+An article in Environmental Monitoring and Assessment in 1993 explored the relationship between NO3 wet desposition (grams per cubic meter) and lichen (percent dry weight) in order to try to predict lichen dryness using NO3. The dataset is loaded next.
+
+```{r}
+lichen <- 
+  read.table("https://awagaman.people.amherst.edu/nonparametricstats/lichen.txt",
+             h = T)
+summary(lichen)
+dim(lichen)
+```
+
+If the goal is to predict lichen dryness using NO3, which variable should be the response and which the predictor?
+
+> SOLUTION:
+
+NO3 is the predictor and lichen dryness is the response. 
+
+Fit a parametric regression model. Then address the questions below. 
+
+> SOLUTION:
+
+```{r}
+mod2 <- lm(lichen ~ no3, data = lichen) 
+msummary(mod2) 
+mplot(mod2, which = 1) 
+mplot(mod2, which = 2) 
+ggplot(data = lichen, aes(x = no3, y = lichen)) +
+  geom_point() + geom_lm()
+```
+
+
+What is the equation of the fitted parametric regression line? 
+
+> SOLUTION:
+
+pred_LichenDryness$=0.36510+0.96683*$NO3
+
+    
+Do you see any major issues with the assumptions for the parametric test here?
+
+> SOLUTION:
+
+The residual QQ plot shows some outliers - further from the line than we'd like. The residuals versus fitted plot shows some possibility of increasing variance, but definitely shows the outliers. Thus, we would be concerned about the conditions due to the outliers - observations 7 and 13 in particular on the high end, and 6 on the low end. 
+
+Is there a significant linear relationship between the two variables?
+
+> SOLUTION:
+
+If we assume the conditions hold, then yes. We have a t value of 5.286 and p-value = 0.000258. This indicates the linear relationship is statistically significant. 
+
+
+Now, compare the results to what you find using a nonparametric linear regression model. Fit the model first.
+
+> SOLUTION:
+
+```{r}
+with(lichen, theil(no3, lichen, beta.0 = 0, type = "t", r = 6)) 
+2*pKendall(-0.74359, N = 13) # manual p-value computation to check
+```
+
+
+What is the equation of the fitted nonparametric regression line? 
+
+> SOLUTION:
+
+pred_MedianLichenDryness$= 0.409 + 0.757*$NO3
+
+
+Is there a significant linear relationship between the two variables based on the nonparametric procedure? Is this result consistent with the parametric test results?
+
+> SOLUTION:
+
+The p-value is 0.000123 (we increased r above so it wasn't rounded to 0), so yes, there is a significant linear relationship based on the nonparametric test. This is consistent with the parametric test results. 
+
+
+Would it be appropriate to predict the NO3 value when the lichen percentage is 50 percent using the regression lines obtained above? Explain. 
+
+> SOLUTION:
+
+No. The regression line we have uses NO3 to predict lichen dryness. We would need to refit the regression line to do the reverse. The slopes are NOT simply inverses of each other (common misconception encountered in intro stats), so you can't just reverse the lines this way. 
+
+
+## Comparing Parametric and Nonparametric SLR via Simulation
+
+We want to investigate settings where the differences between the nonparametric and parametric procedures can be observed. This lies in studying the distribution of errors, which we can explore via simulation. 
+
+Let's consider a model where $Y = 3X + 6 + error$, and then tinker with what distribution we use for the error. Remember that the errors are supposed to have median 0, but we can change the spread and shape of the distribution quite a bit and still satisfy this. Most of our examples below also involve symmetric distributions, but that doesn't have to be the case. 
+
+### Example 1 - Uniform Errors
+
+```{r}
+set.seed(52) # you can change this!
+x <- runif(25, 16, 24) # 25 obs from a Unif(16,24)
+y <- 3*x + 6 + runif(25, -2, 2) # Y=3X+6+ error; error is uniform(-2,2) 
+mydata <- data.frame(x, y)
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+fm <- lm(y ~ x, data = mydata)
+msummary(fm)
+with(mydata, theil(x, y, beta.0 = 0, type = "t")) # nonparametric fit
+```
+
+How do the parametric and nonparametric lines compare here? (Look at both plots and their coefficients!) Is this what you expected?
+
+> SOLUTION:
+
+Remember that your responses may differ some if you change the seed, as the data set changes! Answers below are for the seeds provided.
+
+We know that the true line is Y=3X+6. Both methods yield a slope near, but slightly under 3, and intercepts that are too large (both are above 9, instead of being close to 6). Overall the methods look comparable. Yes, this is to be expected. The error is small, and while non-normal, is not too heavy in the tails yet. The parametric method should work well and nonparametric method shouldn't underperform either.   
+   
+In the code below, increase the spread of the errors by using a wider range for the uniform distribution (like -5 to 5, etc.)
+
+```{r}
+set.seed(22) # you can change this!
+x <- runif(25, 16, 24) # 25 obs from a Unif(16,24)
+y <- 3*x + 6 + runif(25, -7, 7) # change -2 and 2 to wider range, still centered at 0 
+mydata <- data.frame(x, y)
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+fm <- lm(y ~ x, data = mydata)
+msummary(fm)
+with(mydata, theil(x, y, beta.0 = 0, type = "t")) # nonparametric fit
+```
+
+How do the parametric and nonparametric lines compare here? Is this what you expected?
+
+> SOLUTION:
+
+The nonparametric method actually seems a little further off now (We tried several values, consistency was noted) than the parametric method. The slopes are still not radically different from 3 though. Maybe a little unexpected here, but the nonparametric method does not always do as well as we might like with uniform errors compared to the parametric method. 
+
+
+Note that this is only a single data set comparison (under each distribution of errors). To do a more appropriate comparison, you'd need to do multiple runs here, comparing multiple slope coefficients across both models (or figure out some other measure you want to use for assessment).    
+    
+### Example 2 - Double Exponential Errors
+    
+We've seen before that the parametric and nonparametric procedures are often near equivalent in settings with either underlying normal distributions or uniform distributions, so let's get a little bit more extreme. 
+
+```{r}
+set.seed(29) # you can change this!
+x <- runif(25, 16, 24) # 25 obs from a Unif(16,24)
+y <- 3*x + 6 + rlaplace(25, 0, 2) # Need center at 0, can change scale parameter 
+mydata <- data.frame(x, y)
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+fm <- lm(y ~ x, data = mydata)
+msummary(fm)
+confint(fm)
+with(mydata, theil(x, y, beta.0 = 0, type = "t")) # nonparametric plot is part of output
+```
+
+How do the parametric and nonparametric lines compare here? Is this what you expected?
+
+> SOLUTION:
+
+The line is still Y=3X+6, but we have double exponential errors. The nonparametric slope is now closer to 3 than the parametric slope. Both still underestimate the slope, so their intercepts are also too high as a result. The CIs indicate we can't reject 3 as a reasonable slope value.    
+   
+Once again, up the spread of the errors to see what happens. In the code below, increase the spread of the errors by using a larger value for the scale parameter
+
+```{r}
+set.seed(51) # you can change this!
+x <- runif(25, 16, 24) # 25 obs from a Unif(16,24)
+y <- 3*x + 6 + rlaplace(25, 0, 5) # Change scale parameter to be > 2
+mydata <- data.frame(x, y)
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+fm <- lm(y ~ x, data = mydata)
+msummary(fm)
+with(mydata, theil(x, y, beta.0 = 0, type = "t")) # nonparametric plot is part of output
+```
+
+How do the parametric and nonparametric lines compare here? Is this what you expected?
+
+> SOLUTION:
+
+For many different values of the scale parameter for the errors, we see the slope estimates being similar (identical, even) for both the parametric and nonparametric methods. The intercepts though, continue to differ. This is slightly unexpected, we haven't really caused issues with the parametric line yet.   
+    
+Note that if the error variance starts getting too large, both lines will start to have issues - the relationship is weaker.   
+   
+### Example 3 - Cauchy Errors
+
+One last example before we look at the effect of outliers, though this example helps to illustrate that too. What happens if we use a Cauchy distribution for the errors? 
+
+```{r}
+set.seed(87) # you can change this!
+x <- runif(25, 16, 24) # 25 obs from a Unif(16,24)
+y <- 3*x + 6 + rcauchy(25, 0, 2) # Need center at 0, can change scale parameter 
+mydata <- data.frame(x ,y)
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+fm <- lm(y ~ x, data = mydata)
+msummary(fm)
+with(mydata, theil(x, y, beta.0 = 0, type = "t")) # nonparametric plot is part of output
+```
+
+How do the parametric and nonparametric lines compare here? Is this what you expected?
+
+> SOLUTION:
+
+The Cauchy distribution is one of the more extreme error distributions, so we expect to see issues with the parametric method here. The slopes show this fairly immediately. The parametric slope estimate is almost 4, compared to the nonparametric estimate which is still fairly close to 3 (3.3).   
+   
+Are there outliers here? What is affecting the performance of the parametric regression line?
+
+> SOLUTION:
+
+Based on the plots, there are a few points now fairly far from the regression line which is affecting the overall fit (pulling the line towards them), but that impacts the parametric line more than the nonparametric line. 
+
+
+One last time, up the spread of the errors to see what happens. In the code below, increase the spread of the errors by using a larger value for the scale parameter. Again, if it goes too large, the relationship can become weak enough that both methods will start to have trouble. 
+
+```{r}
+set.seed(34) # you can change this!
+x <- runif(25, 16, 24) # 25 obs from a Unif(16,24)
+y <- 3*x + 6 + rcauchy(25, 0, 6) # change scale parameter > 2
+mydata <- data.frame(x ,y)
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+fm <- lm(y ~ x, data = mydata)
+msummary(fm)
+with(mydata, theil(x, y, beta.0 = 0, type = "t")) # nonparametric plot is part of output
+```
+
+How do the parametric and nonparametric lines compare here? Is this what you expected?
+
+> SOLUTION:
+
+We can see major differences here. The parametric slope estimate is NEGATIVE, and not significantly different from 0. The nonparametric estimate is 3.456, so a little high, but the CI shows that three is a reasonable value for the slope. Here, you'd want the nonparametric procedure. This is as expected given the underlying Cauchy distribution for the error terms.     
+    
+Are there outliers here? What is affecting the performance of the parametric regression line?
+
+> SOLUTION:
+
+There is a clear outlier that has an x of almost 22 but a very large magnitude negative y value due to the errors which is heavily influencing the parametric line.    
+    
+
+### Example 4 - Effect of Outliers
+   
+The Cauchy examples should have started to suggest that the parametric procedures are much more sensitive to outliers than the nonparametric procedures. Here, we investigate that more directly. We want to start with a relationship where both procedures do fairly well. We can even use a normal distribution for the errors.
+
+```{r}
+set.seed(76) # keep this, or remember to change both here and below
+x <- runif(25, 16, 24) # 25 obs from a Unif(16,24)
+y <- 3*x + 6 + rnorm(25, 0, 3) # Y=3X+6+ error; error is N(0,3)
+mydata <- data.frame(x, y)
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+fm <- lm(y ~ x, data = mydata)
+msummary(fm)
+with(mydata, theil(x, y, beta.0 = 0, type = "t")) # nonparametric plot is part of output
+```
+
+How do the parametric and nonparametric lines compare here? Is this what you expected?
+
+> SOLUTION:
+
+Both slope values are very near to 3. The intercepts are both off, but not by much. The methods are doing well, and the nonparametric one is not suffering too much in this setting either. 
+
+P.S. It should be good that the nonparametric line is not doing badly in a setting where the parametric line is expected to do well.    
+    
+Now, let's create an influential point by modifying an existing data point. This is a point that we think will affect the regression line strongly because it is off the general pattern. 
+
+The first and second observations were:
+
+```{r}
+head(mydata, 2)
+```
+
+The second observation is very close to both lines, so let's tinker with that one. We will leave it at that X value, but change the y value. Instead of 71.57, let's drop the Y value to 30, and see what happens.
+
+```{r}
+# brute force way to change point
+mydata[2, 2] <- 30
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+fm <- lm(y ~ x, data = mydata)
+msummary(fm)
+with(mydata, theil(x, y, beta.0 = 0, type = "t")) # nonparametric plot is part of output
+```
+
+What effect did you observe in the regression lines? Which line was more affected by the unusual point?
+
+> SOLUTION:
+
+The slopes of both regression lines have dropped now, but the parametric one was much more affected by the unusual point. 
+
+Points further from the mean of the x's have more leverage to influence the regression line. Let's reload the data and tinker with one of the furthest points out. 
+
+```{r}
+set.seed(76) # match what you started Cauchy section with
+x <- runif(25, 16, 24) # 25 obs from a Unif(16,24)
+y <- 3*x + 6 + rnorm(25, 0, 3) # Y=3X+6+ error; error is N(0,3)
+mydata <- data.frame(x, y)
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+max(x)
+which(x > 23.545)
+mydata[13, ]
+```
+
+The maximum x value (we could also do minimum) is observation 13. Let's change (drop) it's Y value to 40 and see what happens. 
+
+```{r}
+mydata[13, 2] <- 40
+ggplot(mydata, aes(x = x, y = y)) + geom_point() + geom_lm() # parametric fit
+fm <- lm(y ~ x, data = mydata)
+msummary(fm)
+with(mydata, theil(x, y, beta.0 = 0, type = "t")) # nonparametric plot is part of output
+```
+
+What effect did you observe in the regression lines? Which line was more affected by the unusual point?
+
+> SOLUTION:
+
+Here, the slopes dropped again but the parametric one dropped to about 1.9 instead of 2.8 like the nonparametric line. This again indicates the parametric line is more sensitive to outliers. 
+
+
+What if we dropped the y-value even further there to something like 20? Which line would you expect to be more affected?
+
+> SOLUTION:
+
+The parametric line would be most affected.
+
+Feel free to check to verify your thoughts. 
+
+You should be able to describe the benefits of nonparametric procedures based on these examples, as well as understand a bit more about how the parametric procedures can be affected by unusual points or non-normal errors. 
+
+
+## Data Sources
+
+Barrett, Michael E., et al. "Characterization of highway runoff in Austin, Texas, area." Journal of Environmental Engineering 124.2 (1998): 131-137.
+
+Bruteig, Inga E. "The epiphytic lichen Hypogymnia physodes as a biomonitor of atmospheric nitrogen and sulphur deposition in Norway." Environmental monitoring and assessment 26.1 (1993): 27-47.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
