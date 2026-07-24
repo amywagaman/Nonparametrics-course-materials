@@ -1,0 +1,324 @@
+---
+title: "Nonparametric Correlation - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(car)
+library(SuppDists)
+```
+
+# Data
+
+```{r}
+data(Salaries)
+# ?Salaries # remove the starting comment to learn about the data
+names(Salaries)
+```
+
+You can read the help file to refresh your memory about the data. There are three categorical and three quantitative variables. We will use the quantitative variables to examine correlation computations.
+
+Here are the three possible scatterplots of quantitative variables, color-coded by rank of the professor - assistant, associate, or full professor. We focused on the first pair in the examples file, so now let's look at the other two. We've left the code from the examples below to assist you. 
+
+```{r}
+ggplot(data = Salaries, aes(x = salary, y = yrs.since.phd, color = rank)) +
+  geom_point() # already examined
+
+ggplot(data = Salaries, aes(x = salary, y = yrs.service, color = rank)) +
+  geom_point()
+
+ggplot(data = Salaries, aes(x = yrs.service, y = yrs.since.phd, color = rank)) +
+  geom_point()
+```
+
+Do you see any unusual patterns in the plots? What sorts of association are visible in the plots? 
+
+> SOLUTION
+
+# Parametric Computations - Pearson's (product moment correlation coefficient)
+
+To begin, we want to compute the correlation using a parametric method. This is very easy. 
+
+```{r}
+# example code
+cor.test(yrs.since.phd ~ salary, data = Salaries)
+```
+
+Obtain the correlations and test results for the other two possible pairs of quantitative variables. 
+
+> SOLUTION
+
+```{r}
+
+```
+
+What is the largest correlation you observe? Between what two variables?
+
+> SOLUTION
+
+
+Does the parametric test for each pair of variables identify a significant correlation? 
+
+> SOLUTION
+
+
+
+
+Now we will consider some nonparametric estimates.
+
+# Nonparametric Computations - Kendall's tau 
+
+```{r}
+# example code
+cor.test(yrs.since.phd ~ salary, data = Salaries, method = "kendall") 
+```
+
+Obtain the estimated Kendall's tau's for the other pairs of quantitative variables. How do these values compare to their parametric counterparts? 
+
+> SOLUTION
+
+```{r}
+
+```
+
+Are the test results for the nonparametric tests consistent with those of the parametric procedures? Which correlations are significantly different from 0? 
+
+> SOLUTION
+
+
+
+We can also make CIs for tau, using theory or the bootstrap.
+
+```{r}
+# example code
+with(Salaries, kendall.ci(yrs.since.phd, salary, alpha = 0.05, type = "t"))
+
+set.seed(225) # can input any value you want
+with(Salaries, kendall.ci(yrs.since.phd, salary, alpha = 0.05, type = "t",
+                          bootstrap = T, B = 1000))
+```
+
+Choose one of the two pairs of variables not explored in the examples to construct confidence intervals for tau.
+
+Obtain a 95% CI for tau for your selected pair of variables using theory (not the bootstrap).
+
+> SOLUTION
+
+```{r}
+
+```
+
+Obtain a 95% CI for tau for your selected pair of variables using the bootstrap.
+
+> SOLUTION
+
+```{r}
+
+```
+
+How similar are the two CIs you generated for tau? 
+
+> SOLUTION
+
+
+How do the CIs for tau compare to the parametric CI for the pearson correlation coefficient?
+
+> SOLUTION
+
+
+# Nonparametric Computations - Spearman's rho
+
+```{r}
+# example code
+cor.test(yrs.since.phd ~ salary, data = Salaries, method = "spearman")
+```
+
+Obtain the test results using Spearman's rho for the other pairs of quantitative variables. Are the test results for the nonparametric tests consistent with those of the parametric procedures? Which correlations are significantly different from 0? 
+
+> SOLUTION
+
+```{r}
+
+```
+
+
+# Critical Values Practice 
+
+You may want to refer back to the examples file before attempting these calculations. 
+
+## Critical Values for Kendall's tau
+
+1) Find the p-value for a lower-tailed test (correlation < 0) when $\bar{K}$=-3/11 and N=12.
+
+```{r}
+
+```
+
+
+2) Find the cutoff for a lower-tailed test (correlation < 0) when N=12 and alpha=0.08 (but not higher) is desired. 
+
+```{r}
+
+```
+
+
+3) Find the p-value for an upper-tailed test (correlation > 0) when $\bar{K}$=0.5 and N=8. 
+
+```{r}
+
+```
+
+
+4) Find the cutoff for an upper-tailed test (correlation > 0) when N=8 and alpha=0.10 (but not higher) is desired.
+
+```{r}
+
+```
+
+## Critical Values for Spearman's rho
+
+1) Find the p-value for a lower-tailed test (correlation < 0) when $r_s$ = -0.43007 and N=12.
+
+```{r}
+
+```
+
+
+2) Find the cutoff for a lower-tailed test (correlation < 0) when N=12 and alpha=0.03 is desired. Report the final alpha.
+
+```{r}
+
+```
+
+
+3) Find the p-value for an upper-tailed test (correlation > 0) when $r_s$=0.5 and N=8. 
+
+```{r}
+
+```
+
+
+4) Find the cutoff for an upper-tailed test (correlation > 0) when N=8 and alpha=0.07 is desired. Report the final alpha.
+
+```{r}
+
+```
+
+
+# Practice with Iris
+
+```{r}
+data(iris)
+```
+
+Recall the iris data set. We are interested in checking whether or not two associations are really present across all irises (considered together). 
+
+First, we want to examine if Petal.Length and Sepal.Width have a significant association.
+
+Second, we want to examine if Sepal.Length and Sepal.Width have a significant association. 
+
+Address both questions with parametric and nonparametric procedures. Provide a sense of whether it appears the association is positive or negative if it is significant.
+
+## Do Petal.Length and Sepal.Width have a significant association?
+
+> SOLUTION 
+
+```{r}
+
+```
+
+
+## Do Sepal.Length and Sepal.Width have a significant association?
+
+> SOLUTION
+
+```{r}
+
+```
+
+
+## One Last Question
+
+Finally, take a look at this plot:
+
+```{r}
+ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
+  geom_point()
+```
+
+What does this plot suggest about the association between Sepal.Width and Sepal.Length when Species is taken into account?
+
+> SOLUTION
+
+Verify your thoughts by examining the association for just Setosa, with both parametric and nonparametric procedures.
+
+> SOLUTION
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how these nonparametric correlation measures/tests are used.
+
+Use Google Scholar and do a search for "Kendall's tau" (or "Spearman's rho", whichever interests you more!) and an application area of interest to you. For example, search for '"Kendall's tau" archaeology' to look for applications of the Kendall's tau in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Kleitou, Periklis, et al., "Marine protected areas can increase the abundance of invasive lionfish (Pterois miles)," Conservation Science and Practice, 6.6, 2024.
+
+McCormick, Fergus, and Melissa Nicolas, "Impacts of Climate Change on Coastal Archaeological Sites in County Kerry, Ireland," Internet Archaeology, 60, 2022.
+
+Arndt, Stephan, Carolyn Turvey, and Nancy C. Andreasen, "Correlating and predicting psychiatric symptom ratings: Spearman's r versus Kendall's tau correlation," Journal of Psychiatric Research, 33.2, 1999: 97-104.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+What was the nonparametric correlation measure/test used for in the article? Describe as best you can. For example, what were the hypotheses being tested? 
+
+> SOLUTION:
+
+Does the article state why that particular nonparametric correlation measure was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+
+## Data Sources
+
+Salaries data from carData package
+
+Iris data. Available in R with data(iris). Original sources referenced in R help: 
+
+Fisher, R. A. (1936) The use of multiple measurements in taxonomic problems. Annals of Eugenics, 7, Part II, 179–188. doi:10.1111/j.1469-1809.1936.tb02137.x.
+
+Anderson, Edgar (1935). The irises of the Gaspe Peninsula, Bulletin of the American Iris Society, 59, 2–5.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

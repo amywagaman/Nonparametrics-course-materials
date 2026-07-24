@@ -1,0 +1,461 @@
+---
+title: "Nonparametric Correlation - Lab Activity - Example Solution"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(car)
+library(SuppDists)
+```
+
+# Data
+
+```{r}
+data(Salaries)
+# ?Salaries # remove the starting comment to learn about the data
+names(Salaries)
+```
+
+You can read the help file to refresh your memory about the data. There are three categorical and three quantitative variables. We will use the quantitative variables to examine correlation computations.
+
+Here are the three possible scatterplots of quantitative variables, color-coded by rank of the professor - assistant, associate, or full professor. We focused on the first pair in the examples file, so now let's look at the other two. We've left the code from the examples below to assist you. 
+
+```{r}
+ggplot(data = Salaries, aes(x = salary, y = yrs.since.phd, color = rank)) +
+  geom_point() # already examined
+
+ggplot(data = Salaries, aes(x = salary, y = yrs.service, color = rank)) +
+  geom_point()
+
+ggplot(data = Salaries, aes(x = yrs.service, y = yrs.since.phd, color = rank)) +
+  geom_point()
+```
+
+Do you see any unusual patterns in the plots? What sorts of association are visible in the plots? 
+
+> SOLUTION
+
+The associations are generally positive, though the 2nd plot for years of service and salary is hard to interpret - some people have low salaries even with very high years of service. The third plot is the most interesting. You'd expect most people to have years since phd > yrs service, so all points would be above the line y=x. However, we see a few points below that. Due to the discrete nature of this plot, a better one would actually be a plot with some point transparency. Then, points that are more solid show multiple observations are on top of each other. 
+
+```{r}
+ggplot(data = Salaries, aes(x = yrs.service, y = yrs.since.phd, color = rank)) +
+  geom_point(alpha = 0.5) # alpha controls transparency
+```
+
+In all three plots, rank is behaving as we would expect.
+
+# Parametric Computations - Pearson's (product moment correlation coefficient)
+
+To begin, we want to compute the correlation using a parametric method. This is very easy. 
+
+```{r}
+# example code
+cor.test(yrs.since.phd ~ salary, data = Salaries)
+```
+
+Obtain the correlations and test results for the other two possible pairs of quantitative variables. 
+
+> SOLUTION
+
+```{r}
+cor.test(yrs.service ~ salary, data = Salaries)
+cor.test(yrs.since.phd ~ yrs.service, data = Salaries)
+```
+
+What is the largest correlation you observe? Between what two variables?
+
+> SOLUTION
+
+The largest observed correlation is between yrs.service and yrs.since.phd. The value is 0.90965. This makes sense, as the period of service would usually be expected to be after completing a Ph.D., and both would increase over time (for most people). 
+
+Does the parametric test for each pair of variables identify a significant correlation? 
+
+> SOLUTION
+
+All three pairs of variables have p-values that are extremely small, and CIs that miss 0. So yes, all three indicate a significant correlation, even for the weaker correlations present. 
+
+
+Now we will consider some nonparametric estimates.
+
+# Nonparametric Computations - Kendall's tau 
+
+```{r}
+# example code
+cor.test(yrs.since.phd ~ salary, data = Salaries, method = "kendall") 
+```
+
+Obtain the estimated Kendall's tau's for the other pairs of quantitative variables. How do these values compare to their parametric counterparts? 
+
+> SOLUTION
+
+```{r}
+cor.test(yrs.service ~ salary, data = Salaries, method = "kendall")
+cor.test(yrs.since.phd ~ yrs.service, data = Salaries, method = "kendall")
+```
+
+For the first pair, we had 0.41923 versus 0.34102 (nonparametric second). For the second pair, we had 0.33474 versus 0.30483 (nonparametric second). For the final pair, we had a very strong 0.90965 versus 0.76432 for the nonparametric procedure. In all cases, the nonparametric estimate is closer to 0 than the parametric estimate, but the tests all indicate significant correlations. 
+
+
+Are the test results for the nonparametric tests consistent with those of the parametric procedures? Which correlations are significantly different from 0? 
+
+> SOLUTION
+
+As stated above, all three parametric and all three nonparametric procedures indicate the correlations are significantly different from 0 for all three pairs of quantitative variables. Note that we don't expect the p-values to match (though here, some do), rather we are checking to see if we reach the same conclusions. 
+
+
+We can also make CIs for tau, using theory or the bootstrap.
+
+```{r}
+# example code
+with(Salaries, kendall.ci(yrs.since.phd, salary, alpha = 0.05, type = "t"))
+
+set.seed(225) # can input any value you want
+with(Salaries, kendall.ci(yrs.since.phd, salary, alpha = 0.05, type = "t",
+                          bootstrap = T, B = 1000))
+```
+
+Choose one of the two pairs of variables not explored in the examples to construct confidence intervals for tau.
+
+To demo this, we will just substitute yrs.service in place of salary. 
+
+Obtain a 95% CI for tau for your selected pair of variables using theory (not the bootstrap).
+
+> SOLUTION
+
+```{r}
+with(Salaries, kendall.ci(yrs.since.phd, yrs.service, alpha = 0.05, type = "t"))
+```
+
+Obtain a 95% CI for tau for your selected pair of variables using the bootstrap.
+
+> SOLUTION
+
+```{r}
+set.seed(225) # can input any value you want
+with(Salaries, kendall.ci(yrs.since.phd, yrs.service, alpha = 0.05, type = "t",
+                          bootstrap = T, B = 1000))
+```
+
+How similar are the two CIs you generated for tau? 
+
+> SOLUTION
+
+With this seed, we got (0.735, 0.794) versus (0.733, 0.794). These CIs are very similar - the upper endpoint is the same and the lower differs in the third decimal place. They are also very narrow compared to what we'd see with smaller sample sizes. 
+
+How do the CIs for tau compare to the parametric CI for the pearson correlation coefficient?
+
+> SOLUTION
+
+The parametric pearson 95% CI for the correlation coefficient was (0.8909977, 0.9252353). Our nonparametric interval for tau is a little wider, and shifted towards 0. Both however, are convincing so as to say the variables are not independent, and the correlation is strong and positive.
+
+
+# Nonparametric Computations - Spearman's rho
+
+```{r}
+# example code
+cor.test(yrs.since.phd ~ salary, data = Salaries, method = "spearman")
+```
+
+Obtain the test results using Spearman's rho for the other pairs of quantitative variables. Are the test results for the nonparametric tests consistent with those of the parametric procedures? Which correlations are significantly different from 0? 
+
+> SOLUTION
+
+```{r}
+cor.test(yrs.service ~ salary, data = Salaries, method = "spearman")
+cor.test(yrs.since.phd ~ yrs.service, data = Salaries, method = "spearman")
+```
+
+The test results are consistent. All three correlations are significantly different from 0. 
+
+
+# Critical Values Practice 
+
+You may want to refer back to the examples file before attempting these calculations. 
+
+## Critical Values for Kendall's tau
+
+1) Find the p-value for a lower-tailed test (correlation < 0) when $\bar{K}$=-3/11 and N=12.
+
+```{r}
+pKendall(-3/11, 12)
+```
+
+No adjustments are needed! Lower-tailed test p-values are easy computations from the CDF. 
+
+2) Find the cutoff for a lower-tailed test (correlation < 0) when N=12 and alpha=0.08 (but not higher) is desired. 
+
+```{r}
+qKendall(c(0.076, 0.079, 0.08, 0.081), 12)
+# or something like
+qKendall(seq(0.05, 0.08, by = 0.01), N = 12)
+```
+
+Here, we tried to identify the 0.08 cutoff as well as the next smallest cutoff (because we tend to need to shift to it to achieve our desired alpha). For 0.08, it is suggested we should use -0.30303. However, the associated alpha is then
+
+```{r}
+pKendall(-0.30303, 12)
+```
+
+0.098475, which is larger than our requested 0.08, due to the discrete nature of the distribution. Thus, we need the next smallest quantile, which appears to be -1/3.
+
+```{r}
+pKendall(-1/3, 12)
+```
+
+This gives an alpha of 0.076295, which is less than 0.08. So this should be our cutoff. Again you could solve backwards to get $K$, then shift that, to verify this is the next smallest value. 
+
+3) Find the p-value for an upper-tailed test (correlation > 0) when $\bar{K}$=0.5 and N=8. 
+
+We will use symmetry, and flip everything to the lower tail. So, we imagine $\bar{K}$ is -0.5, with N=8.  
+
+```{r}
+pKendall(-0.5, 8)
+```
+
+The upper-tailed p-value should be equal to this lower-tailed p-value of 0.05434.
+
+4) Find the cutoff for an upper-tailed test (correlation > 0) when N=8 and alpha=0.10 (but not higher) is desired.
+
+Again, we'll use symmetry, swapping into the lower-tail, and then back to the upper-tail once we've identified the cutoff.
+
+```{r}
+qKendall(seq(0.07, 0.11, by = 0.005), 8)
+```
+
+So, looking for the 0.10 cutoff gives -0.35714. But we see this is also the 0.11 cutoff, so the alpha would go over 0.10. We attempted to find the next smallest quantile by adjusting below 0.10 in steps of 0.005. There we find -0.42857 as the cutoff. Verifying:
+
+```{r}
+pKendall(-0.35714, 8) # over 0.10
+pKendall(-0.42857, 8) # 0.089435 is < 0.10
+```
+
+Using symmetry then, the upper-tailed cutoff would be 0.42857.
+
+
+## Critical Values for Spearman's rho
+
+1) Find the p-value for a lower-tailed test (correlation < 0) when $r_s$ = -0.43007 and N=12.
+
+```{r}
+pSpearman(-0.43007, r = 12)
+```
+
+Lower-tailed p-values are easy! Just use the CDF function, which gives 0.077. 
+
+2) Find the cutoff for a lower-tailed test (correlation < 0) when N=12 and alpha=0.03 is desired. Report the final alpha.
+
+We look for the cutoff specifying the desired alpha, but then checking to see if we go over. We can work with the commands directly rather than relying on symmetry since this is a lower-tailed test. 
+
+```{r}
+qSpearman(0.03, r = 12)
+pSpearman(-0.54545, r = 12)
+```
+
+The quantile suggested is -0.54545. Checking, we find the alpha would be 0.031811, which is slightly over the 0.03 suggested. So, we continue searching to find a cutoff that yields an alpha < 0.03,
+
+```{r}
+qSpearman(seq(0.01, 0.03, by = 0.005), r = 12)
+pSpearman(-0.566434, r = 12)
+```
+
+A cutoff of -0.566434 yields an alpha of 0.026, which is less than 0.03.  
+
+3) Find the p-value for an upper-tailed test (correlation > 0) when $r_s$=0.5 and N=8. 
+
+Here, we use symmetry. This is needed so the probability at the point $r_s$ = 0.5 is included correctly. 
+
+```{r}
+pSpearman(-0.5, r = 8)
+```
+
+Using symmetry, the p-value would be 0.10809. Note, a two-sided test would just double this. 
+
+To show that you'd have issues getting this without using symmetry, note that
+
+```{r}
+1 - pSpearman(0.5, r = 8) # OR
+pSpearman(0.5, r = 8, lower.tail = FALSE)
+```
+
+This is the probability of getting OVER 0.5 for the $r_s$ value, so the difference in p-values is due to the probability mass at 0.5 needing to be included. 
+
+
+4) Find the cutoff for an upper-tailed test (correlation > 0) when N=8 and alpha=0.07 is desired. Report the final alpha.
+
+Again, we'll use symmetry, out of necessity for getting this correct in the upper-tail.
+
+```{r}
+qSpearman(0.07, r = 8)
+pSpearman(-0.547619, r = 8)
+```
+
+The suggested cutoff is 0.546719, which results in an alpha of 0.085491. This is probably too much higher than 0.07 for us NOT to search for a different quantile.
+
+```{r}
+qSpearman(0.06, r = 8)
+pSpearman(-0.5714286, r = 8)
+```
+
+It looks like 0.57143 would give an alpha of 0.07557, so this is still over our desired alpha. We need to keep looking.
+
+```{r}
+qSpearman(seq(0.04, 0.07, by = 0.002), r = 8)
+pSpearman(-0.59524, r = 8)
+```
+
+It looks like 0.59524 would work, with an associated alpha of 0.066146. Note that we used steps of 0.002 to keep looking for the next quantile, even though n was fairly small. For large n, be sure your jumps are not too big.  
+
+# Practice with Iris
+
+```{r}
+data(iris)
+```
+
+Recall the iris data set. We are interested in checking whether or not two associations are really present across all irises (considered together). 
+
+First, we want to examine if Petal.Length and Sepal.Width have a significant association.
+
+Second, we want to examine if Sepal.Length and Sepal.Width have a significant association. 
+
+Address both questions with parametric and nonparametric procedures. Provide a sense of whether it appears the association is positive or negative if it is significant.
+
+## Do Petal.Length and Sepal.Width have a significant association?
+
+> SOLUTION 
+
+```{r}
+ggplot(data = iris, aes(y = Petal.Length, x = Sepal.Width)) + geom_point()
+# parametric method; significant negative correlation
+cor.test(Petal.Length ~ Sepal.Width, data = iris) 
+# kendall, significant negative correlation
+cor.test(Petal.Length ~ Sepal.Width, data = iris, method = "kendall") 
+# spearman, significant negative correlation
+cor.test(Petal.Length ~ Sepal.Width, data = iris, method = "spearman") 
+```
+
+Yes, Petal.Length and Sepal.Width have a significant negative association (-0.186 for Kendall and -0.31 for Spearman) when considered together for all irises.
+
+## Do Sepal.Length and Sepal.Width have a significant association?
+
+> SOLUTION
+
+```{r}
+ggplot(data = iris, aes(y = Sepal.Length, x = Sepal.Width)) + geom_point()
+# parametric method; insignificant negative correlation
+cor.test(Sepal.Length ~ Sepal.Width, data = iris) 
+# kendall, insignificant negative correlation
+cor.test(Sepal.Length ~ Sepal.Width, data = iris, method = "kendall") 
+# spearman, significant* negative correlation
+cor.test(Sepal.Length ~ Sepal.Width, data = iris, method = "spearman") 
+```
+
+Here, we see different behaviors based on the test procedure selected. For the parametric method and kendall's, Sepal.Length and Sepal.Width do not have a significant negative association (estimate is -0.1176 for Pearson's r and -0.077 for kendall's) when considered together for all irises. Spearman's, however, shows a significant negative correlation (p-value is 0.04137).
+
+## One Last Question
+
+Finally, take a look at this plot:
+
+```{r}
+ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
+  geom_point()
+```
+
+What does this plot suggest about the association between Sepal.Width and Sepal.Length when Species is taken into account?
+
+> SOLUTION
+
+The association is overall negative (across all species), but when examined BY species, the association is positive. (This is why we need multivariate methods!)
+
+Verify your thoughts by examining the association for just Setosa, with both parametric and nonparametric procedures.
+
+> SOLUTION
+
+```{r}
+setosa <- filter(iris, Species == "setosa")
+
+# parametric method; significant positive correlation
+cor.test(Sepal.Length ~ Sepal.Width, data = setosa) 
+# kendall, significant positive correlation
+cor.test(Sepal.Length ~ Sepal.Width, data = setosa, method = "kendall") 
+# spearman, significant positive correlation
+cor.test(Sepal.Length ~ Sepal.Width, data = setosa, method = "spearman") 
+```
+
+All three correlation coefficients are positive (0.743 for Pearson, 0.597 for Kendall, and 0.755 for Spearman).
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how these nonparametric correlation measures/tests are used.
+
+Use Google Scholar and do a search for "Kendall's tau" (or "Spearman's rho", whichever interests you more!) and an application area of interest to you. For example, search for '"Kendall's tau" archaeology' to look for applications of the Kendall's tau in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Kleitou, Periklis, et al., "Marine protected areas can increase the abundance of invasive lionfish (Pterois miles)," Conservation Science and Practice 6.6, 2024.
+
+McCormick, Fergus, and Melissa Nicolas, "Impacts of Climate Change on Coastal Archaeological Sites in County Kerry, Ireland," Internet Archaeology, 60, 2022.
+
+Arndt, Stephan, Carolyn Turvey, and Nancy C. Andreasen, "Correlating and predicting psychiatric symptom ratings: Spearman's r versus Kendall's tau correlation," Journal of Psychiatric Research, 33.2, 1999: 97-104.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Answers will vary.
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+Answers will vary.
+
+What was the nonparametric correlation measure/test used for in the article? Describe as best you can. For example, what were the hypotheses being tested? 
+
+> SOLUTION:
+
+Answers will vary.
+
+Does the article state why that particular nonparametric correlation measure was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Answers will vary.
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+Answers will vary.
+
+
+## Data Sources
+
+Salaries data from carData package
+
+Iris data. Available in R with data(iris). Original sources referenced in R help: 
+
+Fisher, R. A. (1936) The use of multiple measurements in taxonomic problems. Annals of Eugenics, 7, Part II, 179–188. doi:10.1111/j.1469-1809.1936.tb02137.x.
+
+Anderson, Edgar (1935). The irises of the Gaspe Peninsula, Bulletin of the American Iris Society, 59, 2–5.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
