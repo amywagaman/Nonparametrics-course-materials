@@ -199,7 +199,7 @@ Perform an appropriate analysis to determine if there are significant difference
 
 ## Nonparametric Methods in Literature
 
-As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the rank sum test is used.
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the Kruskal-Wallis test is used.
 
 Use Google Scholar and do a search for "Kruskal-Wallis test" (or "Kruskal-Wallis" or "nonparametric ANOVA") and an application area of interest to you. For example, search for '"Kruskal-Wallis" archaeology' to look for applications of the test in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
 
