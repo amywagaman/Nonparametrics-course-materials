@@ -1,0 +1,317 @@
+---
+title: "Nonparametric MLR - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(SuppDists)
+library(Rfit)
+```
+
+
+# Nonparametric Regression Examples 
+
+## Example 1 (includes parametric regression comparison)
+
+We use a data set on painted turtles, where we know their biological sex and their height/length/width measurements. 
+
+```{r}
+turtle <- 
+  read.table("https://awagaman.people.amherst.edu/nonparametricstats/paintedturtle.txt", 
+                     header=TRUE)
+```
+
+Suppose we want to try to predict the height of the turtles, using length and sex. 
+
+Fit a nonparametric regression predicting height using length. Use *theil* for exact results since this is an SLR. Do your results make sense?
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+You probably noticed something odd going on. There are many ties here among the length values. It appears that these are causing issues. If we want the nonparametric estimates, we'll have to get them ourselves.
+
+How would we do that? A little brute code (which can likely be done more elegantly). Just follow along with what is being done here. 
+
+```{r}
+num <- nrow(turtle)
+slopes <- NULL
+for(i in 1:(num-1)){
+  for(j in (i+1):num){
+     slopes <- c(slopes, as.numeric(lm(height ~ length, 
+                                       data = turtle[c(i,j),])$coeff[2]))    
+  }
+} 
+favstats(~ slopes)
+gf_boxplot(~ slopes)
+```
+
+This is an approach where we iterate and each time, add a possible slope to our slopes vector. We use the parametric lm function - you could compute this with the respective X and Y's too. Why do we pull the second entry from the coefficients? 
+
+> SOLUTION:
+
+
+
+What would you report as the nonparametric slope estimate?
+
+> SOLUTION: 
+
+
+We could then get the alpha (intercept estimate) fairly easily as well.
+
+```{r}
+alphas <- with(turtle, height - 0.382*length)
+median(alphas)
+```
+
+The nonparametric regression line thus obtained manually would be:
+
+> SOLUTION: 
+
+
+
+Compare your results to those from rfit rank-based approach for the SLR. How much do the lines differ? 
+
+> SOLUTION: 
+
+```{r}
+
+```
+
+
+
+Now we want to extend to multiple linear regression. 
+
+Use sen.adichie to test whether or not the slopes of the regression line for predicting height using length would be equal or different for the two sexes.  Remember a particular data format is needed for this procedure.
+
+> SOLUTION: 
+
+```{r}
+
+```
+
+
+Try *rfit* with a categorical predictor and interaction term to do the same test as sen.adichie. Are the results consistent? 
+
+> SOLUTION:
+
+```{r}
+# remember if K > 2, this means fitting two models, then using drop.test
+# if K = 2, there is another option
+
+```
+
+
+Try *lm* following the same approach as above. Are the nonparametric results about whether you need different slopes for the sexes consistent with the parametric results?
+
+> SOLUTION:
+
+```{r}
+# remember if K > 2, this means fitting two models, then using anova
+# if K = 2, there is another option
+
+```
+
+
+## Example 2
+
+```{r}
+primate <- 
+  read.table("https://awagaman.people.amherst.edu/nonparametricstats/primatedata.txt", 
+                      header = TRUE)
+```
+
+The data set *primatedata.txt* contains variables about shoulder blades from 105 primates. There are 5 indices (basically measured distances): AD.BD, AD.CD, EA.CD, Dx.CD, and SH.ACR, and 2 angles recorded (EAD and beta) for each shoulder blade. The primate genus (plural: genera) is also recorded, as the variable *class*. Gibbons (Hylobates), orangutangs (Pongo), chimpanzees (Pan), gorillas (Gorilla), and man (Homo) are all represented in the data set.
+
+Pick three of the five genera to focus on. Which three do you think it would be interesting to explore differences between?
+
+> SOLUTION:
+
+
+Create a data set with only your three genera present. It may help to add a mutate where you reset the factor levels (just do: class = factor(class)) so it understands there are only 3 levels. 
+
+> SOLUTION:
+
+
+
+Use sen.adichie to test whether or not the slopes of the regression line for predicting AD.BD using AD.CD would be equal or different for your choice of three genera.  
+
+> SOLUTION: 
+
+
+
+
+Use rfit to test whether or not you can predict *EAD* using all 5 indices (AD.BD, AD.CD, EA.CD, Dx.CD, and SH.ACR) with each (separately) interacted with genera (which includes genera's main effect), versus a null model.  
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+
+Use rfit to test whether or not you can drop ALL the interactions from the model above and still predict *EAD* with the 5 indices and genera as main effects. 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+(If time permits) Find the "best" nonparametric model you can to predict beta, using any combination of predictors, interactions, re-expressed predictors, etc. for your data set with only 3 genera. Remember, we like simple models for ease of interpretation. (If you don't care about interpreting, then you can make a model more complicated.) Your response should use at least 2 nonparametric test procedures (though they don't need to be drop-tests), and be sure you fit nonparametric models. Feel free to make comparisons to parametric methods. 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+
+## Example 3 - Simulated Data
+
+Here, we consider a setup with simulated data with the SAME underlying linear model but different distributions for the error terms.  We generated the data separately and have uploaded the data sets. We are not sharing the linear model with you - see if you can figure it out while exploring the problems below.
+
+The setting is as follows: The company WidgetsRUs sells widgets. They have three stores in a particular city, and they are trying to develop a model to predict the daily number of widgets sold based on some other variables: price of the widgets that day (dollars), whether there was a publicized sale on widgets that day (yes/no), and the location of the store (3 locations). They have provided data for you from the past 100 days of sales, which you can assume is a representative sample of their sales. 
+
+### Normal Errors
+
+```{r}
+WidgetNormal<- 
+  read.csv("https://awagaman.people.amherst.edu/nonparametricstats/WidgetDataNormal.csv", 
+                        h = T)
+str(WidgetNormal)
+```
+
+Find a "good" parametric regression line for predicting the daily NumSold values based on the other predictors. (No, you do not need to use all the predictors).
+
+> SOLUTION: 
+
+
+Fit a nonparametric competitor using the same model structure. 
+
+> SOLUTION:
+
+
+
+How do the models compare in terms of coefficient estimates? In terms of model fit? In terms of satisfying conditions? (You can get the residuals from the nonparametric models and make plots manually.)
+
+> SOLUTION:
+
+
+### Double Exp Errors
+
+```{r}
+WidgetDExp<- 
+  read.csv("https://awagaman.people.amherst.edu/nonparametricstats/WidgetDataDExp.csv",
+           h = T)
+```
+
+Find a "good" parametric regression line for predicting the daily NumSold values based on the other predictors. (No, you do not need to use all the predictors).
+
+> SOLUTION: 
+
+
+Fit a nonparametric competitor using the same model structure. 
+
+> SOLUTION:
+
+
+
+How do the models compare in terms of coefficient estimates? In terms of model fit? In terms of satisfying conditions? (You can get the residuals from the nonparametric models and make plots manually.)
+
+> SOLUTION:
+
+
+Are you able to find a nonparametric competitor (with different model structure) that does better than this in terms of model fit or in terms of satisfying conditions?
+
+> SOLUTION: 
+
+
+
+#### Cauchy Errors
+
+Note to avoid many negative NumSold values, we had to use a very small spread value for the Cauchy errors compared to the Normal and DExp cases. Two values were forced positive by redrawing errors. 
+
+```{r}
+WidgetCauchy <- 
+  read.csv("https://awagaman.people.amherst.edu/nonparametricstats/WidgetDataCauchy.csv",
+           h = T)
+```
+
+Find a "good" parametric regression line for predicting the daily NumSold values based on the other predictors. (No, you do not need to use all the predictors).
+
+> SOLUTION: 
+
+
+Fit a nonparametric competitor using the same model structure. 
+
+> SOLUTION:
+
+
+
+How do the models compare in terms of coefficient estimates? In terms of model fit? In terms of satisfying conditions? (You can get the residuals from the nonparametric models and make plots manually.)
+
+> SOLUTION:
+
+
+Are you able to find a nonparametric competitor (with different model structure) that does better than this in terms of model fit or in terms of satisfying conditions?
+
+> SOLUTION: 
+
+
+#### Model Comparison
+
+The underlying model structure did NOT change in any of the settings above. The errors changed in distribution. 
+
+Were the parametric coefficient estimates "stable"?
+
+> SOLUTION: 
+
+Were the nonparametric coefficient estimates "stable"?
+
+> SOLUTION:
+
+Is there anything else you learned from these comparisons?
+
+> SOLUTION:
+
+Note that each of these data sets was a single draw of the errors from their corresponding distributions. To truly assess behavior here, doing this repeatedly would be advised. 
+
+
+## Data Sources
+
+Painted turtle data from Jolicoeur, Pierre, and James E. Mosimann. "Size and shape variation in the painted turtle. A principal component analysis." Growth 24.4 (1960): 339-354.
+
+Primate data from Izenman, Alan J. Modern multivariate statistical techniques. Vol. 1. New York: Springer, 2008.
+
+Original primate data source: Ashton, E. H., C. E. Oxnard, and T. F. Spence. "Scapular shape and primate classification." Proceedings of the Zoological Society of London. Vol. 145. No. 1. Oxford, UK: Blackwell Publishing Ltd, 1965.
+
+The Widget data was simulated.  
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

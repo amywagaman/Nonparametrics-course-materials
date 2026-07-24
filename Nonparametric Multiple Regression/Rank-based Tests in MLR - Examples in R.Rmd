@@ -1,0 +1,176 @@
+---
+title: "Rank-based Tests in MLR - Examples in R"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(Rfit)
+library(SuppDists)
+```
+
+# MLR Rank-Based Test Examples
+
+## Example 1 
+
+Researchers observed the following data on 20 individuals with high blood pressure:
+
+* blood pressure ($BP$, in mm Hg)
+* age ($Age$, in years)
+* weight ($Weight$, in kg)
+* body surface area ($BSA$, in $m^2$)
+* duration of hypertension ($Dur$, in years)
+* basal pulse ($Pulse$, in beats per minute)
+* stress index ($Stress$)
+
+Our goal is to build a model for blood pressure as a function of (some subset) of the other variables.
+
+```{r}
+BP <- read.csv("https://awagaman.people.amherst.edu/nonparametricstats/bloodpress.csv")
+```
+
+The basic rfit summary includes an overall drop test option that is similar to the nested F-test for parametric models. When performing a drop test, the null hypothesis is that the reduced model is sufficient. The alternative hypothesis is that the full model (at least one variable is useful) is better. In other words, the null is that the slopes for predictors in the full model but not reduced are all 0, and the alternative is that the slope of at least one of those predictors is not zero.  There is another option for the overall test, called the Wald test.  Here is the code for these two options with the full model.
+
+```{r}
+# the . in the command tells it to use all the non-response variables as predictors
+fullmodel <- rfit(BP ~ ., data = BP) 
+summary(fullmodel, overall.test = 'drop') # default seems to be drop-test approach
+# in case you are interested, here is the alternative offered
+summary(fullmodel, overall.test = 'wald')
+```
+
+Using the drop-test output, we see the test statistic is 77.98 and p-value is approximately 0. 
+
+What should we conclude?
+
+Note that the output using the Wald Test statistic and p-value would have provided the same conclusion. A nice option that comes with the overall.test = 'drop' (default) option is that we get a robust version of R-squared that you can use to discuss model fit. 
+
+What if we wanted to use the drop.test command to compare models? Well, here are some other models we could consider, using different predictor subsets.
+
+```{r}
+fm3 <- rfit(BP ~ Weight +  Age + Dur + Stress, data = BP)
+fm4 <- rfit(BP ~ Weight +  Age, data = BP)
+```
+
+Remember that the null hypothesis is that the reduced model is sufficient, and this indicates the coefficients for predictors in the full model but not the reduced model all have slopes of 0. Note that the full model goes in the command first (which is the opposite of using the anova command for the nested F test). 
+
+If we test this below, what are we testing? What is the result?
+
+```{r}
+drop.test(fullmodel, fm3)
+```
+
+We are testing the null hypothesis that the coefficents associated with BSA and Pulse are equal to 0 against the alternative hypothesis that at least one of these coefficients is non-zero.  Since the p-value is well below 0.05, we reject the null hypotheses and conclude that the full model is better than the first reduced model (fm3).
+
+What about here?
+
+```{r}
+drop.test(fm3, fm4)
+```
+
+When comparing the two reduced models (fm3 and fm4), we are testing the null hypothesis that the two coefficients associated with Duration and Stress are equal to zero.  Since the p-value 0.34995 is well above 0.05, we cannot reject the null hypothesis.  Thus, we conclude that fm4 would be a better model than fm3, based on this drop in deviance test.
+
+You can use the *summary* command for these models in order to get coefficients, write down regression equations, etc. Remember to put overall.test = 'drop' in the summary command (it should work as its the default, but if not, be sure you get the drop-test output). 
+
+The summary output also gives you a test statistic and p-value for each individual predictor. Remember to interpret these as relating to the significance of that predictor while accounting for the presence of the other variables in the model. 
+
+## Example with a Categorical predictor
+
+To consider how rfit works with a categorical predictor, we briefly turn to the iris data set in R. 
+
+```{r}
+data(iris)
+irisfull <- rfit(Sepal.Length ~ ., data = iris)
+summary(irisfull, overall.test = 'drop')
+irissubset <- rfit(Sepal.Length ~ Sepal.Width*Species, data = iris)
+summary(irissubset, overall.test = 'drop')
+```
+
+rfit seems to behave exactly as expected for categorical variables. This includes the ability to include interactions. Indicator variables are created correctly for the categorical variable levels. Be sure you can tell what the reference level is!
+
+For the overall drop test, we see a test statistic of 97.845 and a p-value reported as 0. We can reject the null hypothesis and state that it appears at least one predictor has a significant non-zero slope that is useful for predicting Sepal.Length. 
+
+Should you try to compare the irisfull and irissubset models here? If not, what would an appropriate model to compare be?
+
+No, the predictor variables in the reduced model are not a subset of those in the full model. One possibility is to compare the iris subset model (irissubset) with another model that does not have the interaction terms.  Another possibility is to compare the full model (irisfull) with the reduced model that does not include interaction terms.  Give this a try!
+
+## Example with no relationship
+
+We generate toy data here for this example.
+
+```{r}
+set.seed(225)
+x <- rnorm(100, 25, 2)
+y <- rnorm(100, 15, 6)
+test <- rfit(y ~ x) 
+summary(test, overall.test = 'drop')
+```
+
+This is just an example to see what happens if you don't have significance. X and Y are generated independently, so if the p-value was significant, that's a Type I error. You can change the seed to examine multiple data sets. 
+
+## Comparing Rfit and Theil
+
+We should be able to fit SLR with rfit, so let's check and see what happens. 
+
+```{r}
+# prior 6 data points example
+x <- c(12.54367, 11.09313, 13.62189, 12.31389, 14.51518, 11.29860)
+y <- c(24.23092, 22.97545, 26.25129, 23.65294, 31.59527, 22.98974)
+mydata <- data.frame(x, y)
+with(mydata, theil(x, y, beta.0 = 0, type = "t"))
+rfitmod <- rfit(y ~ x, data = mydata)
+summary(rfitmod, overall.test = 'drop')
+```
+
+rfit is providing different results than theil, as the approach is different, so we recommend that you should use theil for nonparametric SLR, but rfit for nonparametric MLR. Again, rfit uses a different optimization criterion via a rank-based approach compared to theil (median-based approach), so this makes sense. Here's another quick example to illustrate the difference.
+
+## Do flexible work schedules reduce the demand for resources?
+
+The Lake County, Illinois, Health Department experimented with a flexible four-day workweek. For a year, the department recorded the mileage (and other variables) driven by 11 field workers on an ordinary five-day workweek. Then it changed to a flexible four-day workweek and recorded mileage (and other variables) for a year for the same workers in that setting.
+
+```{r}
+# mileage example
+day5 <- c(2798, 7724, 7505, 838, 4592, 8107, 1228, 8718, 1097, 8089, 3807) # use as X
+day4 <- c(2914, 6112, 6177, 1102, 3281, 4997, 1695, 6606, 1063, 6392, 3362)
+daydata <- data.frame(day5, day4)
+with(daydata, theil(day5, day4, beta.0 = 0, type = "t"))
+mod <- rfit(day4 ~ day5, data = daydata)
+summary(mod, overall.test = 'drop')
+```
+
+The difference here isn't as extreme, but there is a difference. This means not only can you examine the difference between parametric and nonparametric approaches, but there are multiple nonparametric approaches you can consider. You can examine the difference in models between parametric SLR, nonparametric SLR with a median-based approach and nonparametric SLR with a rank-based approach!
+
+## Data Sources
+
+Blood pressure data set from Penn State's STAT 501 course. Referenced online at https://online.stat.psu.edu/stat501/lesson/12/12.1
+Data of last access: July 25, 2025. 
+
+Iris data. Available in R with data(iris). Original sources referenced in R help: 
+
+Fisher, R. A. (1936) The use of multiple measurements in taxonomic problems. Annals of Eugenics, 7, Part II, 179–188. doi:10.1111/j.1469-1809.1936.tb02137.x.
+
+Anderson, Edgar (1935). The irises of the Gaspe Peninsula, Bulletin of the American Iris Society, 59, 2–5.
+
+Simulated data for the Toy example (6 data points).
+
+Charles S. Catlin, “Four-day Work Week Improves Environment,” Journal of Environmental Health, Denver, 59:7, 1997.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

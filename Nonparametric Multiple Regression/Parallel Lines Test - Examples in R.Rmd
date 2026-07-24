@@ -1,0 +1,138 @@
+---
+title: "Testing for Parallelism of Regression Lines - Examples in R"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(SuppDists)
+library(Rfit)
+```
+
+# Example - Iris
+
+```{r, warning = FALSE}
+data(iris)
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) + 
+  geom_point() + 
+  geom_lm()
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) + 
+  geom_point() + 
+  geom_lm()
+```
+
+In the iris data set, something interesting happens if we consider the plot of Sepal.Length versus Sepal.Width. 
+The relationship looks negative if we ignore the three Species of iris present.
+Once you look by Species though, all three relationships are actually positive. Do these (parametric) regression lines have the same slope? Do the nonparametric equivalents have the same slope?
+
+## Parametric Test
+
+We assume the conditions for inference are met. (Normality of errors and constant variance of errors - ask if you don't remember how to check these!)
+
+```{r}
+fmbig <- lm(Sepal.Width ~ Sepal.Length*Species, data = iris)
+msummary(fmbig) # so you can see what the output looks like
+fmsmall <- lm(Sepal.Width ~ Sepal.Length + Species, data = iris)
+# use the anova command for test, smaller model first
+anova(fmsmall, fmbig)
+```
+
+Looking at the provided output, what do you conclude about whether or not you can use parallel slopes for these regression lines? 
+
+> Discussion: The nested F test and the individual t tests for the coefficients of the interaction terms both suggest that three separate regression lines would be a better model than the model with parallel slopes.
+
+## What are the nonparametric slope estimates?
+
+Good question. We use a new function called rfit from the Rfit package to obtain the nonparametric regression coefficients, including the interaction term. 
+
+```{r}
+npmod <- rfit(Sepal.Width ~ Sepal.Length*Species, data = iris)
+summary(npmod, overall.test = 'drop') # not default
+fmbig$coefficients
+npmod$coefficients
+```
+
+The test is discussed in Hollander, Wolfe, and Chicken section 9.6.
+
+How do the parametric and nonparametric model coefficients compare?
+
+> Discussion: The coefficients are slightly different, especially the estimated intercepts and the coefficients for Speciesvirginica.
+
+```{r}
+npmodsmall <- rfit(Sepal.Width ~ Sepal.Length + Species, data = iris)
+drop.test(npmod, npmodsmall) # smaller model goes second here
+```
+
+If the same logic (as in the parametric case) applies here to the nonparametric case, what would you conclude about whether or not you can use parallel slopes for these regression lines?
+
+> Discussion: For our nonparametric models, the drop in dispersion test and the indivdidual t tests for the coefficients of the interaction terms both suggest that three separate regression lines would be a better model than the model with parallel slopes.
+
+
+Now let's try the Sen-Adichie procedure to see if they have equal slopes, and see if our logic holds. 
+
+## Getting data into the form required for sen.adichie
+
+For the sen.adichie function, the input is supposed to be a list of paired vectors, one per group. Each item in the list is a set of two paired vectors in the form of a matrix. The first column of each matrix is the x vector, the second is the y vector.
+
+```{r}
+# grab variables in x, then y order
+# forced use of dplyr select in case of conflicts
+setxy <- filter(iris, Species == "setosa") %>%
+  dplyr::select(Sepal.Length, Sepal.Width)
+virxy <- filter(iris, Species == "virginica") %>%
+  dplyr::select(Sepal.Length, Sepal.Width)
+verxy <- filter(iris, Species == "versicolor") %>%
+  dplyr::select(Sepal.Length, Sepal.Width)
+```
+
+Once you have these (the paired vectors), the sen.adichie function requires those to be put in a list.
+
+```{r}
+z <- list(setxy, virxy, verxy) # it requires a list object
+```
+
+This should be the desired setup.
+
+```{r}
+sen.adichie(z)
+```
+
+Tada! Our test statistic V is 14.006, and the p-value is reported as 0.001. Let's confirm that we can get this p-value from the appropriate chi-square distribution. There are 3 groups so $k=3$, and $k-1=2$ for our df.
+
+```{r}
+1 - pchisq(14.006, 2) # confirms p-value
+qchisq(0.95, 2) # reject the null hypothesis if V is >= this value at alpha=0.05 level
+```
+
+So, what is our conclusion here?
+
+> Since 14.006 is greater than 5.991465, we reject the null hypothesis and conclude that the model with different slopes is better for the irises.  The p-value is also tiny, which leads us to the same conclusion.
+
+
+## Data Sources
+
+Iris data. Available in R with data(iris). Original sources referenced in R help: 
+
+Fisher, R. A. (1936) The use of multiple measurements in taxonomic problems. Annals of Eugenics, 7, Part II, 179–188. doi:10.1111/j.1469-1809.1936.tb02137.x.
+
+Anderson, Edgar (1935). The irises of the Gaspe Peninsula, Bulletin of the American Iris Society, 59, 2–5.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
