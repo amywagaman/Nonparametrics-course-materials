@@ -1,0 +1,252 @@
+---
+title: "Kruskal-Wallis - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(DescTools)
+library(Stat2Data)
+```
+
+This lab contains two examples for the one-way layout setting (i.e. nonparametric ANOVA / Kruskal-Wallis for general alternatives). The first example demonstrates both parametric and nonparametric commands. The second is a nonparametric analysis completed by you. We encourage you to use commands from example 1 and adjust them appropriately. 
+
+## Example 1 
+
+This data set contains information on Bulls sold at an auction. Suppose we want to consider whether or not average sale price differed between bull breeds.
+
+```{r}
+Bulls <- read.table("https://awagaman.people.amherst.edu/nonparametricstats/bulls.txt", 
+                    header = T)
+Bulls <- mutate(Bulls, breed = cut(breed, breaks = c(0, 4, 6, 10), 
+                      labels = c("Angus", "Hereford", "Simental"),
+                      include.lowest = TRUE)) # adds nice labels
+summary(Bulls)
+```
+
+Explain why an ANOVA or Kruskal-Wallis is the appropriate analysis to perform based on the research question.
+
+> SOLUTION:
+
+Describe how the distribution of sale price appears to differ between the breeds. Do you have any concerns about performing a parametric ANOVA? Any concerns about performing a Kruskal-Wallis procedure?
+
+> SOLUTION:
+
+```{r}
+favstats(salepr ~ breed, data = Bulls)
+ggplot(data = Bulls, aes(x = salepr, y = breed)) + geom_boxplot()
+ggplot(data = Bulls, aes(x = salepr, color = breed)) + geom_density()
+```
+
+### Parametric ANOVA
+
+We fit the parametric ANOVA model:
+
+```{r, warning = FALSE}
+fm <- lm(salepr ~ breed, data = Bulls) # you can ask for the summary if you like
+anova(fm)
+mplot(fm,which = 1)
+mplot(fm,which = 2)
+```
+
+Do the conditions for parametric ANOVA appear to be met?
+
+> SOLUTION:
+
+What possible variable re-expressions might you suggest in order to attempt to "correct" the problems you observed?
+
+> SOLUTION:
+
+Let's try some re-expressions. Remember, you have to re-express the response, because the predictor is categorical.
+
+```{r}
+Bulls <- mutate(Bulls, logsalepr = log(salepr))
+favstats(logsalepr ~ breed, data = Bulls)
+ggplot(data = Bulls, aes(x = logsalepr, y = breed)) + geom_boxplot()
+ggplot(data = Bulls, aes(x = logsalepr, color = breed)) + geom_density()
+```
+
+Does it look like we may have improved on satisfying any conditions with this re-expression?
+
+> SOLUTION:
+
+Let's try the re-expressed response in an ANOVA.
+
+```{r, warning = FALSE}
+fm2 <- lm(logsalepr ~ breed, data = Bulls) # you can ask for the summary if you like
+anova(fm2)
+mplot(fm2, which = 1)
+mplot(fm2, which = 2)
+```
+
+Are the conditions met now? If not, what else might you investigate?
+
+> SOLUTION:
+
+Assuming the conditions were met, what would you conclude about whether or not there were differences on average across the breeds in terms of log sale price? Report your test statistic and p-value. 
+
+> SOLUTION:
+
+### Nonparametric Kruskal-Wallis procedure
+
+The problem with spread that the re-expression is assisting with is also necessary for the Kruskal-Wallis procedure. Common re-expressions of the response here are square roots and logs. Remember that we are now testing for differences in group medians, not means. 
+
+We apply the Kruskal-Wallis procedure in two ways.
+
+First, we can look up the cutoff for the test statistic $H$ based on the sample sizes in the groups.
+
+```{r}
+cKW(0.05, c(32, 17, 27))
+```
+
+Then, we use pKW to run the procedure. These are the commands from the HWC textbook. 
+
+```{r}
+with(Bulls, pKW(x = logsalepr, g = breed))
+```
+
+> What conclusions would you make here? (Medians, not means!) 
+
+SOLUTION:
+
+An alternative, simpler way to run the test is to use the `kruskal.test` command.
+
+```{r}
+kruskal.test(logsalepr ~ breed, data = Bulls)
+```
+
+> Are the results consistent with the book commands?
+
+SOLUTION:
+
+
+
+### Multiple Comparisons for both procedures
+
+Both procedures suggested there are differences in group centers (means for ANOVA and medians for KW). So we want to find the differences. Here are some parametric and nonparametric multiple comparison procedures.
+
+### Parametric MCs
+
+```{r, warning = FALSE, message = FALSE}
+# requires the DescTools library loaded above
+PostHocTest(aov(logsalepr ~ breed, data = Bulls), method = "hsd") # Tukey's HSD
+PostHocTest(aov(logsalepr ~ breed, data = Bulls), method = "bonf") # Bonferroni
+```
+
+What conclusions do you reach here about which means are significantly different? Do the results depend on the method chosen?
+
+> SOLUTION:
+
+### Nonparametric MCs
+
+First, we use the book code. This can take a while to run because it is using MCMC (Markov Chain Monte Carlo). 
+
+```{r, cache = TRUE}
+set.seed(225)
+cSDCFlig(0.05, c(32, 17, 27)) # just gives cutoff for reference
+with(Bulls, pSDCFlig(logsalepr, breed)) # takes a long time, comparatively
+```
+
+What conclusions do you reach here?
+
+> SOLUTION:
+
+Here are some other nonparametric MC approaches. 
+
+```{r, warning = FALSE}
+with(Bulls, pairwise.wilcox.test(logsalepr, breed, p.adjust.method = "holm"))
+# requires DescTools package loaded above
+# other dist option is chisq
+with(Bulls, NemenyiTest(x = logsalepr, g = breed, dist = "tukey")) 
+```
+
+Do these methods agree with the book MC approach?
+
+> SOLUTION:
+
+## Example 2 
+
+The data set **CancerSurvival** contains data about the survival time for patients with various types of cancers. We are interested in differences in the median survival times among those types. 
+
+```{r}
+# requires Stat2Data package loaded above for data
+data(CancerSurvival)
+Cancer <- CancerSurvival # shorten name for ease of use
+favstats(~ Survival | Organ, data = Cancer) 
+ggplot(data = Cancer, aes(x = Survival, y = Organ)) + geom_boxplot()
+ggplot(data = Cancer, aes(x = Survival, color = Organ)) + geom_density()
+```
+
+Perform an appropriate analysis to determine if there are significant differences in median survival time between any cancer types. Note that if conditions are not satisfied, YOU are the statistician in charge, so YOU get to decide what to do about that (you should have some ideas from above). Be sure to clearly state your conclusions. 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how the rank sum test is used.
+
+Use Google Scholar and do a search for "Kruskal-Wallis test" (or "Kruskal-Wallis" or "nonparametric ANOVA") and an application area of interest to you. For example, search for '"Kruskal-Wallis" archaeology' to look for applications of the test in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+
+Lor S., Jin L., Luo T., Xu N., and Xue P., "Optimizing blackboard visibility for enhancing classroom ergonomics," Indoor and Built Environment, 2025.
+  
+C. W. Park and D. R. Seo, "Sentiment analysis of Twitter corpus related to artificial intelligence assistants," 2018 5th International Conference on Industrial Engineering and Applications (ICIEA), Singapore, 2018: 495-498.
+
+Lim, Yon Soo, and Han Woo Park, "How do congressional members appear on the web? Tracking the web visibility of South Korean politicians," Government Information Quarterly, 28.4, 2011: 514-521.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+What was the Kruskal-Wallis test used for in the article? Describe as best you can. For example, what were the hypotheses being tested? What were the groups of interest?
+
+> SOLUTION:
+
+Does the article state why the Kruskal-Wallis test was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+
+
+## Data Sources
+
+The bulls data set is from Johnson/Wichern's Applied Multivariate Statistical Analysis text. Pulled from the 2007 version of the text, but likely in later editions as well. In the text, the data is stated as having been provided courtesy of Mark Ellersieck. 
+
+The cancer survival data set is from Stat2, loaded via the Stat2Data package. 
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

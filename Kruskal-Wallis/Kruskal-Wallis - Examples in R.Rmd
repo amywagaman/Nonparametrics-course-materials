@@ -1,0 +1,392 @@
+---
+title: "Kruskal-Wallis - Examples in R"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(DescTools) # for one set of post-hoc procedures in ANOVA
+library(dunn.test)
+```
+
+# One-Way Layout Example
+
+## Data for First Example
+
+We look at some data about airquality from New York from May to September 1973, contained in R. 
+
+```{r}
+data(airquality)
+names(airquality) # what variables are present
+# make a factor variable for groups
+airquality <- mutate(airquality, Monthf = factor(Month))
+
+ggplot(aes(x = Ozone, y = Monthf), data = airquality) + geom_boxplot()
+favstats(Ozone ~ Monthf, data = airquality)
+ggplot(aes(x = Ozone, color = Monthf), data = airquality) + geom_density()
+```
+
+> What conditions would you worry about being violated here (for ANOVA or the Kruskal-Wallis procedure?) 
+
+## Running a Parametric ANOVA in R
+
+```{r}
+mod <- lm(Ozone ~ Monthf, data = airquality)
+anova(mod)
+```
+
+> What are the test statistic and p-value here?
+
+
+```{r}
+mplot(mod, which = 1) # checking for equal variance
+mplot(mod, which = 2) # checking normality condition, using residuals
+# equivalent to checking each group for normality
+```
+
+> Noting any concerns about the analysis, what would your conclusion be here?
+
+
+## Parametric Multiple Comparisons
+
+Here are examples of some different multiple comparisons procedures in the parametric case and how to run them. 
+
+### Fisher's LSD
+
+```{r}
+with(airquality, pairwise.t.test(Ozone, Monthf, p.adj = 'none'))
+```
+
+This provides just p-values for the associated comparisons, and while the p-value adjustment method is set to "none" that appears to mean Fisher's LSD. P-values $\leq$ your selected overall alpha indicate a significant difference in means. This is the most liberal method of the three here. We do not recommend using this procedure for multiple comparisons. We show it here in the examples just so you see this option does exist. 
+
+### Bonferroni
+
+```{r}
+with(airquality, pairwise.t.test(Ozone, Monthf, p.adj = 'bonf'))
+```
+
+Again, this provides just p-values for the relevant comparison. Bonferroni is the most conservative of the methods shown here. 
+
+### Tukey's HSD 
+
+```{r}
+TukeyHSD(mod) #just feed it the model
+```
+
+This actually shows you the confidence intervals and the p-values (adjusted appropriately) with the 95% family-wise confidence level. It is a compromise method between the other two, and we recommend using this method when possible.  
+
+### Alternative package with all three functions
+
+You may want to consider this option for the adjusted p-values for parametric multiple comparisons. 
+
+```{r, warning = FALSE, message = FALSE}
+# requires DescTools package, loaded above
+PostHocTest(aov(Ozone ~ Monthf, data = airquality), method = "lsd") # Fisher's LSD
+PostHocTest(aov(Ozone ~ Monthf, data = airquality), method = "hsd") # Tukey's HSD
+PostHocTest(aov(Ozone ~ Monthf, data = airquality), method = "bonf") # Bonferroni
+```
+
+
+## Running the Kruskal Wallis Test
+
+First, we can look up the cutoff for the test statistic $H$ based on the sample sizes in the groups.
+
+```{r}
+cutoff <- cKW(0.05, c(26, 9, 26, 26, 29))
+cutoff
+```
+
+Note that you don't need those sample sizes in any particular order, and the output may differ slightly due to Monte Carlo approximations used, unless you set a seed. In other words, it is simulating the null distribution for us.
+
+```{r}
+# re-running the entire chunk will generate the same H cutoff value
+set.seed(225)
+cKW(0.05, c(9, 26, 26, 26, 29)) # arbitray order: least to greatest for sample sizes
+```
+
+In order to use `pKW` to find p-values, we can have the data in one of two formats. From the help menu, we learn that the data entry is intended to be flexible, so that the groups of data can be entered in either of two ways. 
+
+For data with 2 groups, $a=1,2$ and $b=3,4,5$ the following are equivalent: 
+
+      pKW(x = list(c(1, 2), c(3, 4, 5)))      
+      
+      pKW(x = c(1, 2, 3, 4, 5), g = c(1, 1, 2, 2, 2))      
+
+We try the second approach with our data - it is our usual format with one variable being the response and the second being the group variable. Normally, that is a factor variable. Here it seems to work the same whether we feed in the categorical variable or the numerically coded version. 
+
+```{r}
+set.seed(225)
+with(airquality, pKW(x = Ozone, g = factor(Month)))
+
+set.seed(225)
+# equivalent command without using *with* syntax
+pKW(x = airquality$Ozone, g = factor(airquality$Month))
+```
+
+> What conclusions would you make here? Are there lingering concerns about any assumptions?
+
+An alternative and simpler way to run the test is to use the `kruskal.test` command.
+
+```{r}
+kruskal.test(Ozone ~ Monthf, data = airquality)
+```
+
+This appears to jump to the large-sample approximation pretty quickly (not sure it does exact computations at all, actually), as it provides a chi-squared statistic, but this is very close to the reported H from `pKW`.
+
+> Do the two different implementations of the test agree in terms of their conclusion? 
+
+
+
+## Nonparametric Multiple Comparisons
+
+Assuming we are okay with the conditions for inference, we've detected a difference in medians. Where? We use nonparametric multiple comparisons to figure that out. We'll look at the book approach, along with other ways that this is coded in R.
+
+### Hollander, Wolfe, and Chicken Approach
+
+We want to do pairwise Wilcoxon Rank Sum tests (Mann-Whitney U) and use a critical value based on the `cSDCFlig` function. This does Monte Carlo simulations - so you want to set a seed. 
+
+```{r}
+set.seed(225)
+cSDCFlig(0.05, c(26, 9, 26, 26, 29))
+```
+
+It does a lot of computation, so this command can take a while. Here, we find alpha = 0.0495 and the cutoff value is Wstar = 3.80462.
+
+Now, we need to GET the W's for all pairwise combinations of groups, so that we can standardize them to Wstar's. Remember that we really get U'? Well, we have to convert to W again, and then to Wstar. We'll show this for a few pairs, before showing you other ways to do this in R. 
+
+```{r}
+with(airquality, wilcox.test(Ozone[Monthf == 5], Ozone[Monthf == 6]))
+m <- 26 # size of first group
+n <- 9 # size of second group
+Uprime <- 82
+U <- m*n - Uprime
+W <- U + n*(n+1)/2; W # this is the W
+Wstar <- (W - 0.5*(n*(m+n+1)))/sqrt(m*n*(m+n+1)/24); Wstar
+```
+
+Wstar here is 1.86816, which is less than the cutoff, so we do not have evidence of a significant difference in Ozone level medians between Months 5 and 6. 
+
+Here is another comparison:
+
+```{r}
+with(airquality, wilcox.test(Ozone[Monthf == 5], Ozone[Monthf == 7]))
+m <- 26 # size of first group
+n <- 26 # size of second group
+Uprime <- 109.5
+U <- m*n - Uprime
+W <- U + n*(n+1)/2; W # this is the W
+Wstar <- (W-0.5*(n*(m+n+1)))/sqrt(m*n*(m+n+1)/24); Wstar
+```
+
+Wstar here is 5.91399, which is above the cutoff of 3.7787. Based on our evidence, there is a significant difference in medians between Months 5 and 7 in terms of Ozone levels. 
+
+For five groups, there are 10 possible pairwise comparisons (calculation shown). Can we do this faster?
+
+```{r}
+choose(5, 2)
+```
+
+## Hollander, Wolfe, and Chicken Approach - Automated
+
+Luckily, we have the approach automated for us with `pSDCFlig`. It gives the p-values for the related comparisons, after adjusting. The function has the same structure as `pKW`. It does some simulating, so it can take a while to run. If it's taking a LONG time to run (say > 15 minutes), you can tweak the n.mc option which governs the number of Monte Carlo simulations. The default is 10000, which is why it can take a while. 
+
+```{r, cache = TRUE}
+set.seed(225)
+# pSDCFlig(x = airquality$Ozone, g = airquality$Monthf) # should be equivalent
+with(airquality, pSDCFlig(Ozone, Monthf)) 
+```
+
+This confirms the results we had for the 2 examples above AND gives p-values (those are the error rates - the smallest error rate at which you could reject is the p-value). So, just set an overall level of significance and compare the p-values to that, or compare the critical value from `cSDCFlig` to the statistics here. 
+
+Remember, for both `SDCFlig` functions, it is useful to set a seed for reproducibility, and be aware that you can 'cache' results as an option in the {r} chunk options, if things are taking a while to run/compile. 
+
+## Other Automated Approaches
+
+There are many other nonparametric methods out there. Here are just a few. 
+
+First, we could just run all of the Wilcoxon Rank Sum tests pairwise and report their p-values. This can be done with p-value adjustments for multiple testing or not. Here, we show it with no adjustment first. You'll notice the 5-6 and 5-7 comparison p-values match those from above. This is currently un-adjusted, but the whole point of using Wstars was to adjust for multiple testing.
+
+```{r, warning = FALSE}
+with(airquality, pairwise.wilcox.test(Ozone, Monthf, p.adjust.method = "none"))
+```
+
+So, let's adjust. There are many methods you could call here, but Holm's method is a reasonable one - it's better than Bonferroni (and not quite as conservative). 
+
+```{r, warning = FALSE}
+with(airquality, pairwise.wilcox.test(Ozone, Monthf, p.adjust.method = "holm"))
+```
+
+You can look up options for `p.adjust` to see other adjustments to try.
+
+Another method is Dunn's test. The function to run it is in another package - `dunn.test`. This appears to run the Kruskal-Wallis procedure AND do the comparisons. This test is for what is called "stochastic dominance" - you can read about it in the help file for the function. Basically, what you are comparing here are the CDFs of the two groups. Suppose the first group has CDF F1 and second group has CDF F2. The procedure is testing whether F1(y) is less than F2(y) (or vice versa) for all y. This isn't to say that the two distributions can't overlap. It does say the that CDFs can't cross. 
+
+Here is the test with no adjustment. 
+
+```{r, eval = FALSE}
+# requires dunn.test package
+# note: not rendering output due to LaTeX error with font
+with(airquality, dunn.test(x = Ozone, g = Monthf))
+```
+
+Here is an adjustment to the p-values. Again, there are several options available.
+
+```{r, eval = FALSE}
+with(airquality, dunn.test(x = Ozone, g = Monthf, method = "holm"))
+```
+
+When running this code yourself, take a look at the difference here between unadjusted and adjusted p-values. This is why we need to make the adjustments!
+
+One final method is Nemenyi's test. This method may not work as well if the groups have unequal sample sizes. It's in the *DescTools library*, which we loaded above for parametric multiple comparisons.
+
+```{r}
+# other dist option is chisq
+with(airquality, NemenyiTest(x = Ozone, g = Monthf, dist = "tukey")) 
+```
+
+These are ALL nonparametric methods based on rank sums. But they work slightly differently, and you can see different p-values as a result. The idea is that we hope there is overall consensus about which medians are significantly different. 
+
+### Another Example
+
+The airquality data was an example with several issues. It was an unbalanced design, with missing data, and it was likely that the condition for equal spreads was not met. There may also have been issues with independence. 
+
+So, let's look at a more "well-behaved" example. 
+
+```{r}
+data(iris)
+names(iris)
+
+ggplot(aes(x = Sepal.Width, y = Species), data = iris) + geom_boxplot()
+favstats(Sepal.Width ~ Species, data = iris)
+ggplot(aes(x = Sepal.Width, color = Species), data = iris) + geom_density()
+```
+
+> How can we tell this design is balanced? 
+
+> Do the conditions for ANOVA or Kruskal-Wallis appear to be satisfied based on these plots?
+
+```{r, warning = FALSE}
+mod2 <- lm(Sepal.Width ~ Species, data = iris)
+anova(mod2)
+mplot(mod2, which = 1)
+mplot(mod2, which = 2)
+```
+
+> Based on the output, what conclusion would you reach for the ANOVA?
+
+
+> Based on the output, would it be necessary to swap to Kruskal-Wallis here or are the conditions for ANOVA satisfied?
+
+```{r}
+set.seed(225)
+with(iris, pKW(Sepal.Width, Species))
+# pKW(iris$Sepal.Width,iris$Species) # equivalent command
+kruskal.test(Sepal.Width ~ Species, data = iris)
+```
+
+> How similar are the pKW H and Krusal.test chi-squared statistics here? 
+
+> What conclusion do you reach about whether or not the medians are different between the iris Species for Sepal.Width?
+
+
+## Nonparametric Multiple Comparisons
+
+We want to do pairwise Wilcoxon Rank Sum tests and use a critical value based on the `cSDCFlig` function.
+
+```{r}
+set.seed(225)
+cSDCFlig(0.05, c(50, 50, 50))
+```
+
+Here, we find alpha = 0.05 and the cutoff value is Wstar = 3.30502.
+
+One example by hand again - 3 groups is only 3 comparisons, but the automated approach is next. 
+
+```{r}
+with(iris, wilcox.test(Sepal.Width[Species == "versicolor"], 
+                       Sepal.Width[Species == "virginica"]))
+m <- 50 # size of first group
+n <- 50 # size of second group
+Uprime <- 841
+U <- m*n-Uprime
+W <- U+n*(n+1)/2; W # this is the W
+Wstar <- (W-0.5*(n*(m+n+1)))/sqrt(m*n*(m+n+1)/24); Wstar
+```
+
+Wstar here is 3.98748, which is above the cutoff, so we have evidence of a significant difference in *Sepal.Width* medians between *versicolor* and *virginica* irises. 
+
+The automated approach gives:
+
+```{r, cache = TRUE}
+set.seed(225)
+with(iris, pSDCFlig(Sepal.Width, Species)) 
+```
+
+Again, values may differ a little due to simulations done here with the presence of ties in order to get the conditional null distribution. 
+
+# Simulating the Null distribution of H for Krusal-Wallis
+
+In the text, in the comments they go through the case of 3 groups with 2 observations in each group and develop the null distribution of H. There are 90 possible rank assignments in that case. So clearly, we don't want to try listing out values here. 
+
+Here is code for a short simulation to generate the null distribution of H for the setting with k=3, with three observations per group. Note that this will be an approximate distribution, because we are using repeated sampling to generate the distribution, rather than listing all possible rank assignments.
+
+```{r, cache = TRUE}
+ranks <- c(1:9) # list the possible ranks
+group <- c(rep(1:3, each = 3)) # set possible groups - 3 of each
+N <- 9
+runs <- 10000
+H <- rep(0, runs)
+
+set.seed(225)
+for(i in 1:runs){
+  grouprun <- sample(group, 9, replace = FALSE) # shuffles groups 
+  gmeans <- mean(ranks ~ grouprun) # gets mean ranks per group
+  H[i] <- (12/(N*(N+1)))*3*sum((gmeans-(N+1)/2)^2) # computes H and stores
+}
+Hdata <- data.frame(H)
+
+ggplot(data = Hdata, aes(x = H)) + geom_density()
+favstats(~ H, data = Hdata)
+```
+
+
+> Describe the null distribution of H.
+
+> What would you need to change in the code if there were FOUR observations per group? (Hint: there are several places where values need adjusted).
+
+> What would you need to change in the code if there were ties in the ranks? (Hint: there is just one place you'd need to adjust values).
+
+
+
+
+## Data Sources
+
+Data sets in these examples are included with the R software. 
+
+Airquality data. Available in R with data(airquality). Help references Chambers, J. M., Cleveland, W. S., Kleiner, B. and Tukey, P. A. (1983) Graphical Methods for Data Analysis. Belmont, CA: Wadsworth.
+
+Iris data. Available in R with data(iris). Original sources referenced in R help: 
+
+Fisher, R. A. (1936) The use of multiple measurements in taxonomic problems. Annals of Eugenics, 7, Part II, 179–188. doi:10.1111/j.1469-1809.1936.tb02137.x.
+
+Anderson, Edgar (1935). The irises of the Gaspe Peninsula, Bulletin of the American Iris Society, 59, 2–5.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
