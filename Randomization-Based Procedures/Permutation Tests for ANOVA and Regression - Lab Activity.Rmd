@@ -1,0 +1,95 @@
+---
+title: "Permutation Tests for ANOVA and Regression - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(Rfit)
+```
+
+## Air Quality Data
+
+```{r, warning = FALSE}
+data(airquality)
+names(airquality)
+gf_boxplot(as.factor(Month) ~ Ozone, data = airquality)
+favstats(Ozone ~ Month, data = airquality)
+gf_dens(~ Ozone, color = ~ factor(Month), data = airquality)
+```
+
+Consider if you wanted to look for a difference in Ozone levels across the five months in the data set. Would you have any concerns about applying an ANOVA or Kruskal-Wallis procedure here? What are those concerns?   
+   
+> SOLUTION:     
+      
+
+Apply either the ANOVA F-test or Kruskal Wallis test - comparing Ozone across Months, to obtain a statistic for reference. You may want to mutate to add a new variable which is Month as a factor. (At least, be sure to treat Month as a factor).   
+    
+> SOLUTION:     
+
+
+
+Try doing a permutation test for the airquality data - comparing Ozone across Months - use the same procedure you chose above to be consistent with your chosen statistic. Be sure to treat Months as a factor. Compare your results to what you found with the ANOVA or Kruskal Wallis test.       
+      
+> SOLUTION:    
+    
+
+
+
+Perform a permutation test to assess a different linear relationship for the airquality data than what was shown in the examples. Compare your results to what you found with the parametric or nonparametric test procedures (that you'll have to fit first, for reference).    
+    
+> SOLUTION:      
+
+
+
+
+Now, see if you can check for a significant correlation, instead of linear relationship in the airquality Wind and Temp data. Some code is provided to help you get started.   
+    
+```{r}
+# Observed values
+cor.test(Temp ~ Wind, data = airquality)$estimate
+cor.test(Temp ~ Wind, data = airquality, method = "kendall")$estimate
+```
+
+```{r}
+set.seed(225)
+# you need to add the shuffle in the next line
+corstat <- do(1000)*(cor.test(Temp ~ Wind, data = airquality)$estimate) 
+gf_dens(~ cor, data = corstat)
+
+# Do something similar with the nonparametric approach with kendall's tau
+# Hint; it would be tau instead of cor for the density plot, 
+# due to how the function works
+```
+
+> SOLUTION:     
+    
+
+
+
+
+## Data Sources
+
+Airquality data. Available in R with data(airquality). Help references Chambers, J. M., Cleveland, W. S., Kleiner, B. and Tukey, P. A. (1983) Graphical Methods for Data Analysis. Belmont, CA: Wadsworth.
+
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

@@ -1,0 +1,190 @@
+---
+title: "Permutation Tests for ANOVA and Regression - Lab Activity - Example Solution"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(Rfit)
+library(GGally)
+```
+
+
+## Air Quality Data
+
+```{r, warning = FALSE}
+data(airquality)
+names(airquality)
+gf_boxplot(as.factor(Month) ~ Ozone, data = airquality)
+favstats(Ozone ~ Month, data = airquality)
+gf_dens(~ Ozone, color = ~ factor(Month), data = airquality)
+```
+
+Consider if you wanted to look for a difference in Ozone levels across the five months in the data set. Would you have any concerns about applying an ANOVA or Kruskal-Wallis procedure here? What are those concerns?
+
+> SOLUTION: 
+
+The spreads (sds) for Ozone across the Months are fairly different and the distributions by month look different as well. These are problematic for both methods.     
+    
+    
+Apply either the ANOVA F-test or Kruskal Wallis test - comparing Ozone across Months, to obtain a statistic for reference. You may want to mutate to add a new variable which is Month as a factor. (At least, be sure to treat Month as a factor).
+
+> SOLUTION:
+
+```{r}
+airquality <- mutate(airquality, Monthf = factor(Month))
+# obtain observed values
+anova(lm(Ozone ~ Monthf, data = airquality))$F # parametric ANOVA F
+kruskal.test(Ozone ~ Monthf, data = airquality)$statistic # chi-squared approx for KW
+```
+
+We have an observed ANOVA F statistic of 8.53561, and for the Kruskal Wallis procedure, the observed chi-square statistic is 29.2666.     
+      
+Try doing a permutation test for the airquality data - comparing Ozone across Months - use the same procedure you chose above to be consistent with your chosen statistic. Be sure to treat Months as a factor. Compare your results to what you found with the ANOVA or Kruskal Wallis test. 
+
+> SOLUTION:      
+      
+```{r}
+set.seed(272)
+Fstat <- do(1000)*(anova(lm(Ozone ~ shuffle(Monthf), data = airquality)))
+gf_density(~ F, data = Fstat)
+1 - pdata(F, 8.53561, data = Fstat)
+
+Chistat <- rep(0,1000)
+for(i in 1:1000){
+  Chistat[i] <- 
+    kruskal.test(Ozone ~ shuffle(Monthf), data = airquality)$statistic}
+gf_density(~ Chistat)
+1 - pdata(Chistat, 29.2666)
+```
+
+For the ANOVA permutation test, all values in the density plot are less than 5, and for the KW procedure, the values appear to be under 20 (a few larger). Our observed values are larger than these. Both of these procedures indicate that our results are significant, and that there is at least one difference in mean (or median, respectively) ozone levels across the months. The empirical p-values in both procedures are 0.     
+     
+     
+Perform a permutation test to assess a different linear relationship for the airquality data than what was shown in the examples. Compare your results to what you found with the parametric or nonparametric test procedures (that you'll have to fit first, for reference).
+
+> SOLUTION: 
+
+Answers will vary, depending on what relationship was chosen. The example here examines Ozone vs. Solar.R, because that relationship appears to be linear but weak, but with a problem of increasing spread.  We will use Ozone as the response and Solar.R as the predictor (it might be more logical to flip these, but bear with this).
+
+```{r, warning = FALSE}
+ggpairs(airquality)
+```
+
+First, we want to address the increasing spread issue with transformations. 
+
+```{r, warning = FALSE}
+gf_point(log(Ozone) ~ sqrt(Solar.R), data = airquality)
+airquality <- mutate(airquality,
+                     logOzone = log(Ozone), 
+                     sqrtSolar = sqrt(Solar.R))
+```
+
+It looks like a log of the response and sqrt of the predictor gives a weak linear relationship. Is this significant?
+
+Next, we fit the underlying parametric and nonparametric (rank-based) linear models.
+
+```{r}
+model <- lm(logOzone ~ sqrtSolar, data = airquality)
+msummary(model)
+mplot(model, which = 1)
+mplot(model, which = 2)
+modelnp <- rfit(logOzone ~ sqrtSolar, data = airquality)
+summary(modelnp, overall.test = "drop")
+```
+
+The parametric R-squared is 0.2575, and the model appears to be significant, with a slope estimate of 0.108. For the nonparametric procedure, the robust R-squared is 0.2047, with a slope estimate of 0.104, and again the relationship appears to be significant. The conditions for the parametric procedure show the upper values for sqrtSolar are giving us problems in both plots. So, is this relationship really significant? The permutation test should address this.
+
+The code (this is example code, other ways to do this exist) for the permutation tests based on slopes is:
+
+```{r}
+set.seed(685)
+slopes <- do(1000)*(lm(logOzone ~ shuffle(sqrtSolar), data = airquality))
+gf_density(~ sqrtSolar, data = slopes)
+```
+
+for the parametric model and is:
+
+```{r}
+temp <- rep(0, 2000)
+NPslope <- matrix(temp, nrow = 1000) # need 2000 because it stores intercept and slope
+for(i in 1:1000){
+  NPslope[i,] <- (rfit(logOzone ~ shuffle(sqrtSolar), data = airquality))$coefficients
+  } 
+gf_density(~ NPslope[, 2]) # to plot the permuted slope coefficients
+```
+
+for the nonparametric model. 
+
+Looking at our results, for the parametric procedure first, we see that our slope value of 0.108 is off the chart, so this suggests a significant relationship. We verify with pdata.
+
+```{r}
+pdata(~ sqrtSolar, 0.108, lower.tail = FALSE, data = slopes)
+```
+
+Similarly, for the nonparametric slope of 0.104, we obtain an empirical p-value of 0.
+
+```{r}
+pdata(NPslope[, 2], 0.104, lower.tail = FALSE)
+```
+
+Both our permutation tests suggest that the relationship between sqrtSolar and logOzone is significant.       
+     
+      
+Now, see if you can check for a significant correlation, instead of linear relationship in the airquality Wind and Temp data. Some code is provided to help you get started.
+
+```{r}
+# Observed values
+cor.test(Temp ~ Wind, data = airquality)$estimate
+cor.test(Temp ~ Wind, data = airquality, method = "kendall")$estimate
+```
+
+> SOLUTION: 
+
+First, we get our observed parametric and nonparametric estimates. The parametric pearson correlation is -0.46, and the nonparametric Kendall's tau estimate is -0.32.     
+Now we run the randomization procedure.
+
+```{r}
+set.seed(225)
+# you need to add the shuffle in the next line
+corstat <- do(1000)*(cor.test(shuffle(Temp) ~ Wind, data = airquality)$estimate) 
+gf_dens(~ cor, data = corstat)
+
+# Do something similar with the nonparametric approach with kendall's tau
+# Hint; it would be tau instead of cor for the density plot, 
+# due to how the function works
+
+# you need to shuffle here
+corstatnp <- do(1000)*(cor.test(shuffle(Temp) ~ Wind, 
+                                method = "kendall", data = airquality)$estimate) 
+gf_dens(~ tau, data = corstatnp)
+```
+
+> SOLUTION: 
+
+For the parametric correlation, we can easily see that -0.46 is clearly off the plot, no values exceed 0.4 in magnitude (at least with our seed). Similarly, for the Kendall's tau estimate, -0.32 is off the plot as well, with values not exceeding 0.2 in magnitude in the null randomization distribution. Thus, we have evidence of significant correlations.     
+
+## Data Sources
+
+Airquality data. Available in R with data(airquality). Help references Chambers, J. M., Cleveland, W. S., Kleiner, B. and Tukey, P. A. (1983) Graphical Methods for Data Analysis. Belmont, CA: Wadsworth.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
