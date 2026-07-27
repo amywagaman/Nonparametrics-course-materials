@@ -1,0 +1,381 @@
+---
+title: "Density Estimation - Lab Activity - Solution"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(ash) 
+library(quantreg)
+```
+
+# Data
+
+The data are from UCI's machine learning repository. We are examining a fraction of the mHealth data set. 
+
+
+1) Experimental Setup
+
+The collected dataset comprises body motion and vital signs recordings for ten volunteers of diverse profile while performing 12 physical activities (Table 1). Shimmer2 [BUR10] wearable sensors were used for the recordings. The sensors were respectively placed on the subject's chest, right wrist and left ankle and attached by using elastic straps. The use of multiple sensors permits us to measure the motion experienced by diverse body parts, namely, the acceleration, the rate of turn and the magnetic field orientation, thus better capturing the body dynamics. The sensor positioned on the chest also provides 2-lead ECG measurements which are not used for the development of the recognition model but rather collected for future work purposes. This information can be used, for example, for basic heart monitoring, checking for various arrhythmias or looking at the effects of exercise on the ECG. 
+
+All sensing modalities are recorded at a sampling rate of 50 Hz, which is considered sufficient for capturing human activity. Each session was recorded using a video camera. This dataset is found to generalize to common activities of the daily living, given the diversity of body parts involved in each one (e.g., frontal elevation of arms vs. knees bending), the intensity of the actions (e.g., cycling vs. sitting and relaxing) and their execution speed or dynamicity (e.g., running vs. standing still). The activities were collected in an out-of-lab environment with no constraints on the way these must be executed, with the exception that the subject should try their best when executing them.
+
+2) Activity set
+
+The activity set is listed in the following:
+
+L1: Standing still (1 min)   
+L2: Sitting and relaxing (1 min)   
+L3: Lying down (1 min)   
+L4: Walking (1 min)   
+L5: Climbing stairs (1 min)   
+L6: Waist bends forward (20x)   
+L7: Frontal elevation of arms (20x)   
+L8: Knees bending (crouching) (20x)  
+L9: Cycling (1 min)  
+L10: Jogging (1 min)  
+L11: Running (1 min)  
+L12: Jump front & back (20x)  
+
+NOTE: In brackets are the number of repetitions (Nx) or the duration of the exercises (min).
+
+3) Dataset files
+
+The data collected for each subject is stored in a different log file: 'mHealth_subject<SUBJECT_ID>.log'.   
+Each file contains the samples (by rows) recorded for all sensors (by columns).   
+The labels used to identify the activities are similar to the ones presented in Section 2 (e.g., the label for walking is '4').   
+The meaning of each column is detailed next:   
+   
+Column 1: acceleration from the chest sensor (X axis)  
+Column 2: acceleration from the chest sensor (Y axis)  
+Column 3: acceleration from the chest sensor (Z axis)   
+Column 4: electrocardiogram signal (lead 1)   
+Column 5: electrocardiogram signal (lead 2)  
+Column 6: acceleration from the left-ankle sensor (X axis)  
+Column 7: acceleration from the left-ankle sensor (Y axis)  
+Column 8: acceleration from the left-ankle sensor (Z axis)  
+Column 9: gyro from the left-ankle sensor (X axis)  
+Column 10: gyro from the left-ankle sensor (Y axis)  
+Column 11: gyro from the left-ankle sensor (Z axis)  
+Column 12: magnetometer from the left-ankle sensor (X axis)  
+Column 13: magnetometer from the left-ankle sensor (Y axis)  
+Column 14: magnetometer from the left-ankle sensor (Z axis)  
+Column 15: acceleration from the right-lower-arm sensor (X axis)  
+Column 16: acceleration from the right-lower-arm sensor (Y axis)  
+Column 17: acceleration from the right-lower-arm sensor (Z axis)  
+Column 18: gyro from the right-lower-arm sensor (X axis)  
+Column 19: gyro from the right-lower-arm sensor (Y axis)  
+Column 20: gyro from the right-lower-arm sensor (Z axis)  
+Column 21: magnetometer from the right-lower-arm sensor (X axis)  
+Column 22: magnetometer from the right-lower-arm sensor (Y axis)  
+Column 23: magnetometer from the right-lower-arm sensor (Z axis)  
+Column 24: Label (0 for the null class)  
+
+*Units: Acceleration (m/s^2), gyroscope (deg/s), magnetic field (local), ecg (mV)
+
+
+This is a LOT of data to sort through, so we narrowed down our scope. We have the CYCLING data (Activity 9) from subjects 6, 7, and 8 in separate data sets. The data sets did not have variable names so we clean that up a bit here. 
+
+```{r}
+colnames <- c("row", "accchestX", "accchestY", "accchestZ","ecg1", "ecg2", "accleftankleX",
+            "accleftankleY", "accleftankleZ", "gyroleftankleX", "gyroleftankleY",
+            "gyroleftankleZ", "magleftankleX", "magleftankleY", "magleftankleZ", 
+            "accrlowarmX", "accrlowarmY", "accrlowarmZ", "gyrorlowarmX","gyrorlowarmY",
+            "gyrorlowarmZ", "magrlowarmX", "magrlowarmY", "magrlowarmZ", "label")
+
+sub6data <- read.csv("https://awagaman.people.amherst.edu/stat225/mHealth6partial.csv", 
+                     col.names = colnames)
+sub7data <- read.csv("https://awagaman.people.amherst.edu/stat225/mHealth7partial.csv", 
+                     col.names = colnames)
+sub8data <- read.csv("https://awagaman.people.amherst.edu/stat225/mHealth8partial.csv", 
+                     col.names = colnames)
+```
+
+# ECG Signals
+
+Let's look at the ECG signals, focusing on ecg1. 
+
+For Subject 6, fit the default, Sturges, Scott, and FD histogram variants to ecg1. How would you describe the distribution of ecg1? How many bins does each histogram have?
+
+> SOLUTION:
+
+The distribution of ecg1 for subject 6 appears to be unimodal and very right-skewed. The main peak is around 0. The right tail goes out to almost 3. 
+
+```{r}
+histogram(~ ecg1, data = sub6data, main = "Default") # default - 11 bins
+histogram(~ ecg1, data = sub6data, breaks = "Sturges", main = "Sturges") # 8 bins
+# so many bins! about 40 bins to get top observation
+histogram(~ ecg1, data = sub6data, breaks = "Scott", main = "Scott") 
+histogram(~ ecg1, data = sub6data, breaks = "FD", main = "FD") # MANY bins, more than 40
+```
+
+
+Which histogram method do you prefer based on these pictures?
+
+> SOLUTION:
+
+Either the default or Sturges method seem reasonable here. 
+
+
+Compute the Sturges m value, and the FD and Scott h and m values. Do these match what you observed in the histograms generated?
+
+> SOLUTION:
+
+```{r}
+favstats(~ ecg1, data = sub6data)
+FDh <- 2*(0.12559+0.2763)*(3072^(-1/3)); FDh
+Scotth <- 3.5*0.468459*(3072^(-1/3));Scotth
+Sturgesm <- log2(3072) + 1; Sturgesm
+range(~ ecg1, data = sub6data)
+maxmin <- 2.9011+1.0926
+maxmin/FDh
+maxmin/Scotth
+```
+
+The m values are 13 for Sturges (9 was observed), roughly 36 for Scott (which is about what was observed), and roughly 73 for FD (this is less than observed but still a ton of bins). The h values for FD and Scott are shown. 
+
+Fit your preferred method on ecg1 for subjects 7 and 8. How do their distributions compare to that from subject 6?
+
+> SOLUTION:
+
+```{r}
+histogram(~ ecg1, data = sub7data, breaks = "Sturges", main = "Subject 7 Sturges")
+histogram(~ ecg1, data = sub8data, breaks = "Sturges", main = "Subject 8 Sturges")
+```
+
+Both of these distributions are unimodal, with a right skew. The level of right skew is different than in subject 6, and the distributions are not really centered at 0. Subject 7 has a strong right skew while Subject 8 does not. 
+
+# Magnetometer from the left-ankle sensor (X axis)
+
+Let's look at Variable 12 - magleftankleX. For subject 6, make a histogram to examine the distribution.
+
+> SOLUTION:
+
+```{r}
+histogram(~ magleftankleX, data = sub6data)
+```
+
+How would you describe the distribution?
+
+> SOLUTION:
+
+The distribution appears to be bimodal with the more dominant peak on the right. 
+
+What were our motivations for considering kernel density estimates as alternatives to histograms?
+
+> SOLUTION:
+
+The "blocky" patterns from using bins are not really acceptable when we are trying to estimate a continuous density. The kernel estimates allow us to smooth out the patterns that we see.
+
+
+Fit a box kernel density estimate to magleftankleX for Subject 6 with the default bandwidth. Plot the density.
+
+> SOLUTION:
+
+```{r}
+densityplot(~ magleftankleX, data = sub6data, kernel = "r")
+```
+
+What bandwidth value was used? Verify this computation (compute h from the formula). Here, it turns out that is as far as you need to go, they report that h is their bw, even though usually for the box kernel we transform by dividing our desired h by 2*sqrt(3). 
+
+> SOLUTION:
+
+```{r}
+box1 <- density(sub6data$magleftankleX, kernel = "r")
+box1$bw
+favstats(~ magleftankleX, data = sub6data)
+(28.9405+35.07775)/1.34
+bwcheck <- 0.90*((3072)^(-1/5))*33.66925; bwcheck
+```
+
+Fit the box kernel density estimate with the other four fixed bandwidth options and report the bandwidths that result in each case. 
+
+> SOLUTION:
+
+```{r}
+box2 <- density(sub6data$magleftankleX, kernel = "r", bw = "nrd")
+box2$bw
+box3 <- density(sub6data$magleftankleX, kernel = "r", bw = "ucv")
+box3$bw
+box4 <- density(sub6data$magleftankleX, kernel = "r", bw = "bcv")
+box4$bw
+box5 <- density(sub6data$magleftankleX, kernel = "r", bw = "SJ")
+box5$bw
+```
+
+The data-driven methods all give bws near 2.3 (2.27, 2.31, 2.49), which the *nrd* related options give values near 6 and 7, respectively. This is a big difference. 
+
+
+Overlay the solutions (estimated densities). Which is your preferred box kernel solution? Ask if you need assistance with this! Remember you may need to adjust the limits for the y-axis. 
+
+> SOLUTION:
+
+```{r}
+plot(box1$x, box1$y, ylim = c(0,0.022), type = "l") # adjust y for scaling
+lines(box2$x, box2$y, col = 2) # red
+lines(box3$x, box3$y, col = 3) # green
+lines(box4$x, box4$y, col = 4) # blue
+lines(box5$x, box5$y, col = 5) # light blue
+```
+
+We prefer the nrd option (red) best. It appears to be the smoothest curve (for the box kernel we still expect some bumps). The lower bandwidths for the data-driven options mean that the estimate is too bumpy in many places for those settings. The nrd options smooth, and we think the red (nrd) looks smoother than the nrd0 in black, so that's our preference. Your preference may be different! 
+
+
+Next, fit the default bandwidth solution using the Epanechnikov kernel. Do you expect this estimate to be blocky or more smooth relative to the box kernel estimate?
+
+> SOLUTION:
+
+The Epanechnikov kernel estimate should be more smooth relative to the box kernel estimate. 
+
+```{r}
+densityplot(~ magleftankleX, data = sub6data, kernel = "e",
+            main = "Default Epan. Kernel Estimate for magleftankleX")
+```
+
+Find your preferred Epanechnikov kernel solution. What is it's bandwidth?
+
+> SOLUTION:
+
+```{r}
+densityplot(~ magleftankleX, data = sub6data, kernel = "e", bw = "nrd0")
+```
+
+Either the "nrd" or "nrd0" options look good to us. The ucv, bcv, and SJ options find a tiny third peak in the middle that looks odd. We have to call the density function in order to find the bandwidths.
+
+```{r}
+density(sub6data$magleftankleX, kernel = "e", bw = "nrd0")
+density(sub6data$magleftankleX, kernel = "e", bw = "nrd")
+```
+
+6.081 or 7.162 are the two bandwidths. Note, these should be the same as those above for the box kernel, because the formulas to find optimal bandwidth were not kernel dependent. If you check, these do match up. 
+
+Now, take a look at Epanechnikov kernel estimates of the magleftankleX distribution for subjects 7 and 8, using your choice of bandwidth. Do the distributions for the three subjects appear to be similar? If yes, how so? If not, what are the major differences?
+
+> SOLUTION:
+
+```{r}
+sub6V12 <- density(sub6data$magleftankleX, kernel = "e")
+sub7V12 <- density(sub7data$magleftankleX, kernel = "e")
+sub8V12 <- density(sub8data$magleftankleX, kernel = "e")
+
+plot(sub6V12$x, sub6V12$y, ylim = c(0,0.025), type = "l") # adjust y for scaling
+lines(sub7V12$x, sub7V12$y, col = 2) # red
+lines(sub8V12$x, sub8V12$y, col = 3) # green
+```
+
+Using the default bandwidth, we overlaid the density estimates. The distributions appear to have similar characteristics but are not the same. They all have two peaks, but the spreads are vastly different. The centers are all near 0 (or maybe a little below that). In all three, the more dominant peak is on the right (though in the red - subject 7, it's barely "dominant").
+
+
+# ASH - Average Shifted Histograms
+
+Fit a histogram to the gyro from the left-ankle sensor (Y axis)  data, gyroleftankleY, for subject 6.
+
+> SOLUTION:
+
+```{r}
+histogram(~ gyroleftankleY, data = sub6data)
+```
+
+Now, fit an ASH to the same data. (See examples for code).
+
+> SOLUTION:
+
+```{r}
+favstats(~ gyroleftankleY, data = sub6data)
+# input data, range of bins/data values, and number of bins 
+bins <- bin1(sub6data$gyroleftankleY, c(-1,-0.10), 20) 
+ash1(bins) # output from the function, really want to plot 
+plot(ash1(bins), type = "l") # plot of the estimates for each of the bins
+```
+
+Do both solutions demonstrate 2 peaks?
+
+> SOLUTION:
+
+The histogram shows two peaks. With 13 bins, the ASH shows one peak and then perhaps a bulge on the right that could be a second peak. It's not very clear though. This could be because our number of bins is too low. So, we tried 20 bins, and that clearly shows the second peak. We can also make the range for where the intervals are constructed to be larger.
+
+Again, your inputs matter. 
+
+# Variable Bandwidth
+
+Fit a fixed bandwidth kernel density estimate (your choice) to the gyorleftankleY subject 6 data. 
+
+> SOLUTION:
+
+```{r}
+densityplot(~ gyroleftankleY, data = sub6data, kernel = "g") # default bandwidth
+```
+
+
+Fit a variable bandwidth kernel density estimate to the gyroleftankleY subject 6 data. (See Examples for code.) 
+
+> SOLUTION:
+
+
+```{r}
+favstats(~ gyroleftankleY, data = sub6data)
+xx <- seq(-1, 0, length = 200) # 200 equally spaced points between -1 and 0
+z <- akj(sub6data$gyroleftankleY, xx)
+plot(xx, z$dens, ylim = range(0, z$dens), type = "l", col = 2)
+abline(h = 0, col = "gray", lty = 3)
+```
+
+
+Do the density estimates share the same characteristics? Which solution do you prefer?
+
+> SOLUTION:
+
+These estimates look remarkably similar. The akj function only has options of a Gaussian or Cauchy kernel, and the Gaussian is the default, so it matches with the "g" we chose. The variable bandwidth plot does appear slightly smoother than the fixed bandwidth plot, but it was evaluated at 200 points while the fixed was only at 50 (by default), so it may be possible to smooth the fixed one out more. Both plots show two peaks, with a larger one on the left side. 
+
+
+# Comparing Left versus Right
+
+Several of the variables are measured both on the right lower arm and on the left ankle. Pick one of these pairs of variables. Fit your choice of kernel density estimate to each of your selected variables. Are the distributions the same? Would you expect them to be for cycling as the activity?
+
+> SOLUTION:
+
+
+```{r}
+# Answers will vary.
+```
+
+
+# Checking Normality (Review)
+
+Many of the variables for each subject appear approximately normally distributed. Pick one variable, for a subject of your choice, and estimate the mean and SD using descriptive stats. Then test to see if the variables' distribution can be described as approximately normal. Do your densityplots and histograms show fairly bell-shaped distributions even as you change settings? 
+
+> SOLUTION:
+
+
+```{r}
+# Answers will vary. 
+# You can use a one-sample KS test to check for normality with a test procedure.
+```
+
+
+## Data Sources
+
+Banos, O., Garcia, R., Holgado-Terriza, J.A., Damas, M., Pomares, H., Rojas, I., Saez, A., Villalonga, C.: 
+mHealthDroid: a novel framework for agile development of mobile health applications. 
+In: Proceedings of the 6th International Work-conference on Ambient Assisted Living an Active Ageing (IWAAL 2014), Belfast, United Kingdom, December 2-5 (2014)
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

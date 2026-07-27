@@ -1,0 +1,301 @@
+---
+title: "Density Estimation - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(ash) 
+library(quantreg)
+```
+
+# Data
+
+The data are from UCI's machine learning repository. We are examining a fraction of the mHealth data set. 
+
+
+1) Experimental Setup
+
+The collected dataset comprises body motion and vital signs recordings for ten volunteers of diverse profile while performing 12 physical activities (Table 1). Shimmer2 [BUR10] wearable sensors were used for the recordings. The sensors were respectively placed on the subject's chest, right wrist and left ankle and attached by using elastic straps. The use of multiple sensors permits us to measure the motion experienced by diverse body parts, namely, the acceleration, the rate of turn and the magnetic field orientation, thus better capturing the body dynamics. The sensor positioned on the chest also provides 2-lead ECG measurements which are not used for the development of the recognition model but rather collected for future work purposes. This information can be used, for example, for basic heart monitoring, checking for various arrhythmias or looking at the effects of exercise on the ECG. 
+
+All sensing modalities are recorded at a sampling rate of 50 Hz, which is considered sufficient for capturing human activity. Each session was recorded using a video camera. This dataset is found to generalize to common activities of the daily living, given the diversity of body parts involved in each one (e.g., frontal elevation of arms vs. knees bending), the intensity of the actions (e.g., cycling vs. sitting and relaxing) and their execution speed or dynamicity (e.g., running vs. standing still). The activities were collected in an out-of-lab environment with no constraints on the way these must be executed, with the exception that the subject should try their best when executing them.
+
+2) Activity set
+
+The activity set is listed in the following:
+
+L1: Standing still (1 min)   
+L2: Sitting and relaxing (1 min)   
+L3: Lying down (1 min)   
+L4: Walking (1 min)   
+L5: Climbing stairs (1 min)   
+L6: Waist bends forward (20x)   
+L7: Frontal elevation of arms (20x)   
+L8: Knees bending (crouching) (20x)  
+L9: Cycling (1 min)  
+L10: Jogging (1 min)  
+L11: Running (1 min)  
+L12: Jump front & back (20x)  
+
+NOTE: In brackets are the number of repetitions (Nx) or the duration of the exercises (min).
+
+3) Dataset files
+
+The data collected for each subject is stored in a different log file: 'mHealth_subject<SUBJECT_ID>.log'.   
+Each file contains the samples (by rows) recorded for all sensors (by columns).   
+The labels used to identify the activities are similar to the ones presented in Section 2 (e.g., the label for walking is '4').    
+The meaning of each column is detailed next:    
+
+Column 1: acceleration from the chest sensor (X axis)  
+Column 2: acceleration from the chest sensor (Y axis)  
+Column 3: acceleration from the chest sensor (Z axis)   
+Column 4: electrocardiogram signal (lead 1)   
+Column 5: electrocardiogram signal (lead 2)  
+Column 6: acceleration from the left-ankle sensor (X axis)  
+Column 7: acceleration from the left-ankle sensor (Y axis)  
+Column 8: acceleration from the left-ankle sensor (Z axis)  
+Column 9: gyro from the left-ankle sensor (X axis)  
+Column 10: gyro from the left-ankle sensor (Y axis)  
+Column 11: gyro from the left-ankle sensor (Z axis)  
+Column 12: magnetometer from the left-ankle sensor (X axis)  
+Column 13: magnetometer from the left-ankle sensor (Y axis)  
+Column 14: magnetometer from the left-ankle sensor (Z axis)  
+Column 15: acceleration from the right-lower-arm sensor (X axis)  
+Column 16: acceleration from the right-lower-arm sensor (Y axis)  
+Column 17: acceleration from the right-lower-arm sensor (Z axis)  
+Column 18: gyro from the right-lower-arm sensor (X axis)  
+Column 19: gyro from the right-lower-arm sensor (Y axis)  
+Column 20: gyro from the right-lower-arm sensor (Z axis)  
+Column 21: magnetometer from the right-lower-arm sensor (X axis)  
+Column 22: magnetometer from the right-lower-arm sensor (Y axis)  
+Column 23: magnetometer from the right-lower-arm sensor (Z axis)  
+Column 24: Label (0 for the null class)  
+
+*Units: Acceleration (m/s^2), gyroscope (deg/s), magnetic field (local), ecg (mV)
+
+
+This is a LOT of data to sort through, so we narrowed down our scope. We have the CYCLING data (Activity 9) from subjects 6, 7, and 8 in separate data sets. The data sets did not have variable names so we clean that up a bit here. 
+
+```{r}
+colnames <- c("row", "accchestX", "accchestY", "accchestZ","ecg1", "ecg2", "accleftankleX", "accleftankleY", "accleftankleZ", "gyroleftankleX", "gyroleftankleY", "gyroleftankleZ", "magleftankleX", "magleftankleY", "magleftankleZ", "accrlowarmX", "accrlowarmY", "accrlowarmZ", "gyrorlowarmX","gyrorlowarmY", "gyrorlowarmZ", "magrlowarmX", "magrlowarmY", "magrlowarmZ", "label")
+
+sub6data <- read.csv("https://awagaman.people.amherst.edu/stat225/mHealth6partial.csv", 
+                     col.names = colnames)
+sub7data <- read.csv("https://awagaman.people.amherst.edu/stat225/mHealth7partial.csv", 
+                     col.names = colnames)
+sub8data <- read.csv("https://awagaman.people.amherst.edu/stat225/mHealth8partial.csv", 
+                     col.names = colnames)
+```
+
+# ECG Signals
+
+Let's look at the ECG signals, focusing on ecg1. 
+
+For Subject 6, fit the default, Sturges, Scott, and FD histogram variants to ecg1. How would you describe the distribution of ecg1? How many bins does each histogram have?
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Which histogram method do you prefer based on these pictures?
+
+> SOLUTION:
+
+
+Compute the Sturges m value, and the FD and Scott h and m values. Do these match what you observed in the histograms generated?
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+Fit your preferred method on ecg1 for subjects 7 and 8. How do their distributions compare to that from subject 6?
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+# Magnetometer from the left-ankle sensor (X axis)
+
+Let's look at Variable 12 - magleftankleX. For subject 6, make a histogram to examine the distribution.
+
+> SOLUTION:
+
+```{r}
+
+```
+
+How would you describe the distribution?
+
+> SOLUTION:
+
+What were our motivations for considering kernel density estimates as alternatives to histograms?
+
+> SOLUTION:
+
+
+Fit a box kernel density estimate to magleftankleX for Subject 6 with the default bandwidth. Plot the density.
+
+> SOLUTION:
+
+```{r}
+
+```
+
+What bandwidth value was used? Verify this computation (compute h from the formula). Here, it turns out that is as far as you need to go, they report that h as their bw, even though usually for the box kernel we xform by dividing our desired h by 2*sqrt(3). 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Fit the box kernel density estimate with the other four fixed bandwidth options and report the bandwidths that result in each case. 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Overlay the solutions (estimated densities). Which is your preferred box kernel solution? Ask if you need assistance with this! Remember you may need to adjust the limits for the y-axis. 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Next, fit the default bandwidth solution using the Epanechnikov kernel. Do you expect this estimate to be blocky or more smooth relative to the box kernel estimate?
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+Find your preferred Epanechnikov kernel solution. What is it's bandwidth?
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Now, take a look at Epanechnikov kernel estimates of the magleftankleX distribution for subjects 7 and 8, using your choice of bandwidth. Do the distributions for the three subjects appear to be similar? If yes, how so? If not, what are the major differences?
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+# ASH - Average Shifted Histograms
+
+Fit a histogram to the gyro from the left-ankle sensor (Y axis)  data, gyroleftankleY, for subject 6.
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Now, fit an ASH to the same data. (See examples for code).
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Do both solutions demonstrate 2 peaks?
+
+> SOLUTION:
+
+
+
+# Variable Bandwidth
+
+Fit a fixed bandwidth kernel density estimate (your choice) to the gyorleftankleY subject 6 data. 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+Fit a variable bandwidth kernel density estimate to the gyroleftankleY subject 6 data. (See Examples for code.) 
+
+> SOLUTION:
+
+
+```{r}
+
+```
+
+
+Do the density estimates share the same characteristics? Which solution do you prefer?
+
+> SOLUTION:
+
+
+
+# Comparing Left versus Right
+
+Several of the variables are measured both on the right lower arm and on the left ankle. Pick one of these pairs of variables. Fit your choice of kernel density estimate to each of your selected variables. Are the distributions the same? Would you expect them to be for cycling as the activity?
+
+> SOLUTION:
+
+
+```{r}
+
+```
+
+
+# Checking Normality (Review)
+
+Many of the variables for each subject appear approximately normally distributed. Pick one variable, for a subject of your choice, and estimate the mean and SD using descriptive stats. Then test to see if the variables' distribution can be described as approximately normal. Do your densityplots and histograms show fairly bell-shaped distributions even as you change settings? 
+
+> SOLUTION:
+
+```{r}
+
+```
+
+
+## Data Sources
+
+Banos, O., Garcia, R., Holgado-Terriza, J.A., Damas, M., Pomares, H., Rojas, I., Saez, A., Villalonga, C.: 
+mHealthDroid: a novel framework for agile development of mobile health applications. 
+In: Proceedings of the 6th International Work-conference on Ambient Assisted Living an Active Ageing (IWAAL 2014), Belfast, United Kingdom, December 2-5 (2014)
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
