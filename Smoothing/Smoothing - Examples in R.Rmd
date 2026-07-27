@@ -1,0 +1,494 @@
+---
+title: "Smoothing - Examples in R"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(fANCOVA) # for HWC 14.2
+library(np) # for HWC 14.3
+library(GGally)
+```
+
+We note that some plots may be able to be updated with ggplot2, this may be revisited in the future. 
+
+# Smoothing - Nonparametric Regression
+
+The text presents three different linear smoothers (one per section) for us to consider.
+
+To illustrate all three, we will use the airquality data set in R. We can only consider relationships between quantitative variables from what is presented in the text, so we'll remove the categorical variables from consideration.
+
+```{r, warning = FALSE}
+data(airquality)
+airquality <- select(airquality, -Month, -Day)
+ggpairs(airquality)
+```
+
+The relationship between Ozone and Temp looks interesting, possibly non-linear, so let's focus on that.     
+
+## Local Averaging (Hollander, Wolfe, and Chicken 14.1)
+
+```{r}
+gf_point(Ozone ~ Temp, data = airquality)
+```
+
+To apply local averaging, we use the `supsmu` function (in stats package) as follows:
+
+```{r}
+cvsmooth <- with(airquality, (supsmu(x = Temp,y = Ozone, bass = 0, span = "cv")))
+plot(cvsmooth, type = "l")
+```
+
+How can we plot this with our data? This uses base R graphics (will show ggplot2 examples for loess smoothers).
+
+```{r}
+with(airquality, plot(Temp, Ozone))
+lines(cvsmooth)
+```
+
+Let's try out some different spans, other than the default. From the help menu, span is described as the fraction of the observations in the span of the running lines smoother, or "cv" to choose this by leave-one-out cross-validation (LOOCV). So, we need to specify a value between 0 and 1 for span to see how this impacts the estimated function. This is different than the number of observations because it has been scaled, but you can map back and forth.
+
+```{r, warning = FALSE}
+smoothcv <- with(airquality,
+                 (supsmu(x = Temp, y = Ozone, bass = 0, span = "cv"))) # default
+smooth1 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 0, span = 0.1))) 
+smooth2 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 0, span = 0.3))) 
+smooth3 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 0, span = 0.7)))
+# should be oversmoothed
+smooth4 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 0, span = 1))) 
+```
+
+Now we plot the results:
+
+```{r}
+with(airquality, plot(Temp, Ozone)) # original data points
+lines(smoothcv) # black
+lines(smooth1, col = 2) # red
+lines(smooth2, col = 3) # green
+lines(smooth3, col = 4) # blue
+lines(smooth4, col = 5) # light blue
+```
+
+We could also do this with the tweeter, midrange, and woofer spans applied to the entire set of Xs (instead of being used in the variable span computation).
+
+```{r, warning = FALSE}
+smoothcv <- with(airquality,
+                 (supsmu(x = Temp, y = Ozone, bass = 0, span = "cv"))) # default
+smooth1 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 0, span = 0.05))) # tweeter 
+smooth2 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 0, span = 0.2))) # midrange
+smooth3 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 0, span = 0.5))) # woofer
+```
+
+Now we plot the results:
+
+```{r}
+with(airquality, plot(Temp, Ozone)) # points only
+lines(smoothcv) # black
+lines(smooth1, col = 2) # red
+lines(smooth2, col = 3) # green
+lines(smooth3, col = 4) # blue
+```
+
+How does the bass parameter fit into this? The parameter is 0 by default (so you could leave it out of the function call). Values go from 0 to 10, and as they increase, you get smoother curves. 
+
+```{r, warning = FALSE}
+smoothcv <- with(airquality,
+                 (supsmu(x = Temp, y = Ozone, bass = 0, span = "cv"))) # default
+smooth1 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 2, span = "cv")))  
+smooth2 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 5, span = "cv"))) 
+smooth3 <- with(airquality,
+                (supsmu(x = Temp, y = Ozone, bass = 10, span = "cv"))) 
+```
+
+Now we plot the results:
+
+```{r}
+with(airquality, plot(Temp, Ozone))
+lines(smoothcv) # black
+lines(smooth1, col = 2) # red
+lines(smooth2, col = 3) # green
+lines(smooth3, col = 4) # blue
+```
+
+What is IN the supsmu objects? Let's look at one. 
+
+```{r}
+smooth3
+unique(sort(airquality$Temp))
+```
+
+Basically, the X values where the smoother was evaluated are listed - these should be the X values in the data set (here we miss one at a tail end). Then, we get the y's corresponding to them after applying the smoother. You won't be able to see the cv chosen span. 
+
+## Toy Data Example
+
+```{r}
+# basic linear pattern
+set.seed(42)
+xl <- rnorm(100, 50, 3)
+yl <- 2*xl + rnorm(100, 0, 5)
+gf_point(yl ~ xl)
+
+smoothcv <- supsmu(x = xl, y = yl, bass = 0, span = "cv") # default
+plot(xl, yl)
+lines(smoothcv) # black
+```
+
+```{r}
+# parabola
+set.seed(58)
+xp <- rnorm(100, 0, 5)
+yp <- (-3)*(xp^2) + 2*xp + rnorm(100, 0, 40)
+gf_point(yp ~ xp)
+
+smoothcv <- supsmu(x = xp, y = yp, bass = 0, span = "cv") # default
+plot(xp, yp)
+lines(smoothcv) # black
+```
+
+```{r}
+# circle - don't expect it to do well
+set.seed(85)
+angle <- runif(100, -2*pi, 2*pi)
+xc <- sin(angle) + rnorm(100, 0, 0.1)
+yc <- cos(angle) + rnorm(100, 0, 0.1)
+gf_point(yc ~ xc)
+
+smoothcv <-supsmu(x = xc, y = yc, bass = 0, span = "cv") # default
+plot(xc, yc, main = "Junk Fit because of Failed Vertical Line Test!")
+lines(smoothcv)  # black
+```
+
+```{r}
+# two humps
+set.seed(89)
+xh1 <- rnorm(75, 4, 2)
+xh2 <- rnorm(75, 7, 1)
+yh1 <- 15-6*(xh1-4)^2 + rnorm(75, 0, 5)
+yh2 <- -6*(xh2-7)^2 + rnorm(75, 0, 5)
+xh <- c(xh1[xh1<6], xh2[xh2>5])
+yh <- c(yh1[xh1<6], yh2[xh2>5])
+gf_point(yh ~ xh)
+
+smoothcv <- supsmu(x = xh, y = yh, bass = 0, span = "cv") # default
+plot(xh, yh)
+lines(smoothcv) # black
+```
+
+
+## Local Regression (Hollander, Wolfe, and Chicken 14.2)
+
+The R commands associated with fitting LOESS models are `loess` and `loess.as`. The first function is in base R but the second is in the `fANCOVA` library (loaded above).
+
+Our text states that the `loess` command requires data sorted by X values, so we can use the `arrange` command (or the sort command, or several other options) to do this.
+
+```{r}
+airquality2 <- arrange(airquality, Temp)
+```
+
+We specify that we want locally linear regression with degree = 1 (meaning a linear regression), and we can set a span when we call the command. The span value is $\alpha$, the proportion of values of the sample we want used in each local regression. If you set degree 2, it will use quadratic regression. 
+
+```{r}
+lrfit <- loess(Ozone ~ Temp, data = airquality2, degree = 1, span = 0.5)
+names(lrfit)
+```
+
+The fitted object has a number of pieces to it. The fitted values are found as:
+
+```{r}
+lrfit$fitted
+```
+
+We can plot this with our data as:
+
+```{r}
+with(airquality2, plot(Temp, Ozone))
+lines(lrfit$x, lrfit$fitted)
+```
+
+So, once again, we can try different spans.
+
+```{r}
+lrfit1 <- loess(Ozone ~ Temp, data = airquality2, degree = 1, span = 0.2)
+lrfit2 <- loess(Ozone ~ Temp, data = airquality2, degree = 1, span = 0.5)
+lrfit3 <- loess(Ozone ~ Temp, data = airquality2, degree = 1, span = 0.8)
+```
+
+And the plot is:
+
+```{r}
+with(airquality2, plot(Temp, Ozone))
+lines(lrfit1$x, lrfit1$fitted) # black for 0.2
+lines(lrfit2$x, lrfit2$fitted, col = 2) # red for 0.5
+lines(lrfit3$x, lrfit3$fitted, col = 3) # green for 0.8
+```
+
+If we want R to select the span, we turn to the `loess.as` command. We need to remove missing values in the data here because the command doesn't process those out. (Again, you can think about how to improve on writing functions eventually for yourself, so this isn't an issue for users of functions you write.)
+
+```{r}
+# note, this does complete cases over the ENTIRE data set, 
+# so it is not the best idea but it runs, how could you do better?
+airquality2 <- airquality2[complete.cases(airquality2), ] 
+lrfit4 <- loess.as(airquality2$Temp, airquality2$Ozone, criterion = "gcv")
+names(lrfit4) # objects in lrfit4 that we can access
+```
+
+The x and y-hat values are accessed the same way as before, so:
+
+```{r}
+with(airquality2, plot(Temp, Ozone))
+lines(lrfit4$x, lrfit4$fitted)
+```
+
+The other option you can try instead of *gcv* is *aicc*. 
+
+```{r}
+lrfit5 <- loess.as(airquality2$Temp, airquality2$Ozone, criterion = "aicc")
+names(lrfit5) # objects in lrfit5 that we can access
+with(airquality2, plot(Temp, Ozone))
+lines(lrfit5$x, lrfit5$fitted)
+```
+
+If you wanted to see what spans these chose, you can get that in the following way:
+
+```{r}
+(lrfit4$pars)$span
+(lrfit5$pars)$span # pulls span proportion out from parameters from model
+```
+
+The default span in `loess` is 0.75, so these were picking values ABOVE that (using more points). 
+
+## Examples in ggplot2
+
+For those of you familiar with `ggplot2`, it has fairly easy ways to add smoothers to plots, including `LOESS`. We'll show some examples here, and try to explain some of the different options. If you aren't familiar with `ggplot2`, look for courses that use it at your institution.
+
+First, we examine a basic scatterplot.
+
+```{r, warning = FALSE}
+ggplot(data = airquality, aes(x = Temp, y = Ozone)) + geom_point() 
+```
+
+Then, we consider adding lines to the plot to help capture the relationship. The next scatterplot has the parametric SLR line plotted.
+
+```{r, warning = FALSE}
+ggplot(data = airquality, aes(x = Temp, y = Ozone)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+Curious about what se = FALSE does? Set it to true. It turns out that true is also the default. This is giving you CIs.
+
+```{r, warning = FALSE}
+ggplot(data = airquality, aes(x = Temp, y = Ozone)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = TRUE)
+```
+
+Ok, but we want to see LOESS smoothers, so we need to change the smooth method. That's an easy change.
+
+```{r, warning = FALSE}
+ggplot(data = airquality, aes(x = Temp, y = Ozone)) + 
+  geom_point() + 
+  geom_smooth(method = "loess", se = FALSE)
+```
+
+Again with SE turned on that would be:
+
+```{r, warning = FALSE}
+ggplot(data = airquality, aes(x = Temp, y = Ozone)) + 
+  geom_point() + 
+  geom_smooth(method = "loess", se = TRUE)
+```
+
+This calls the loess function that we saw above, so it can handle any options you want to pass to it. The default span is 0.75 in loess, so what happens if we change that?
+
+```{r, warning = FALSE}
+ggplot(data = airquality, aes(x = Temp, y = Ozone)) + 
+  geom_point() + 
+  geom_smooth(method = "loess", span = 0.5)
+```
+
+What if we wanted to add a title so we could tell the difference between the plots?
+
+```{r, warning = FALSE}
+ggplot(data = airquality, aes(x = Temp, y = Ozone)) + 
+  geom_point() + 
+  geom_smooth(method = "loess", span = 0.5) +
+  labs(title = "Loess Smoother with Span = 0.5")
+```
+
+Or what if we wanted to plot both smoothers together?
+
+```{r, warning = FALSE}
+ggplot(data = airquality, aes(x = Temp, y = Ozone)) + 
+  geom_point() + 
+  geom_smooth(method = "loess", se = FALSE, color = "blue") +
+  geom_smooth(method = "loess", se = FALSE, span = 0.5, color = "red") +
+  labs(title = "Loess Smoother with Span =0.5 (red) and 0.75 (blue)")
+```
+
+Other options are available here. Feel free to play around with options during the lab. If you wanted to use `loess.as` to pick the span, run that separately and grab the span from the output as shown above, then feed that to the loess command here as the span. 
+
+## Kernel Smoothing (Hollander, Wolfe, and Chicken 14.3)
+
+The R command associated with kernel smoothing is `npreg` which is in the `np` library.
+
+Our text states that the `npreg` command requires data sorted by X values, so we can use the `arrange` command (or the sort command, or several other options) to do this, just as we had to do for the LOESS method.
+
+```{r}
+# to remind you of what we did above
+airquality2 <- arrange(airquality, Temp)
+```
+
+We run the basic command to get the default kernel smoothed estimate for f(x) as follows:
+
+```{r}
+npfit <- with(airquality2, npreg(Ozone ~ Temp))
+plot(npfit)
+npfit # neat summary
+```
+
+We need to plot this on top of our data, so we can just add the data points to the picture.
+
+```{r}
+plot(npfit)
+with(airquality2, points(Temp, Ozone))
+```
+
+We can see what bandwidth was chosen as follows:
+
+```{r}
+npfit$bw
+```
+
+The default kernel is Gaussian (normal), but you set the bandwidth with the `bws` option. 
+
+```{r}
+npfit <- with(airquality2, npreg(Ozone ~ Temp, bws = 0.5))
+plot(npfit)
+with(airquality2, points(Temp, Ozone))
+npfit$bw # verify
+```
+
+What if we want to change the kernel type? The options available are the gaussian, uniform (box), or epanechnikov via the `ckertype` option. 
+
+```{r}
+npfit2 <- with(airquality2, npreg(Ozone ~ Temp, ckertype = "uniform"))
+plot(npfit2)
+with(airquality2, points(Temp, Ozone))
+```
+
+This one gives a warning. You can get warnings because the bandwidth is not big enough to work well with the units of Temperature, or because the kernel order is too low to get a reasonable estimate. As we saw in kernel density estimation, the uniform kernel will give a more "blocky" estimate than the other kernels if the bandwidth is too low.
+
+We can also change the order of the kernel. Let's try the Epanechnikov kernel, with its default order of 2 and then with an order of 8. We'll also set bandwidths of 1 for each to keep that consistent.
+
+```{r}
+npfit3 <- with(airquality2,
+               npreg(Ozone ~ Temp, bws = 1, 
+                     ckertype = "epanechnikov"))
+plot(npfit3)
+with(airquality2, points(Temp, Ozone))
+
+npfit4 <- with(airquality2,
+               npreg(Ozone ~ Temp, bws = 1, 
+                     ckertype = "epanechnikov", 
+                     ckerorder = 8))
+plot(npfit4)
+with(airquality2, points(Temp, Ozone))
+```
+
+This order change is a big deal, and you can see the impact - especially in regions with less data. We would probably just keep the default order of 2. The change to higher order kernels can reduce bias, but adds variability (always a tradeoff). 
+
+What if we want R to help us find the best bandwidth or to re-specify the bandwidth as a fixed number of points to use? (That is, a span idea). For the re - specifying, we can do this with two methods - adaptive which changes the bandwidth at each data point, or generalized NN which can do it for any x. You can try those here. 
+
+```{r}
+npfit5 <- with(airquality2,
+               npreg(Ozone ~ Temp, 
+                     ckertype = "gaussian", 
+                     bwtype = "adaptive_nn"))
+plot(npfit5)
+with(airquality2, points(Temp, Ozone))
+```
+
+OR
+
+```{r}
+npfit6 <- with(airquality2,
+               npreg(Ozone ~ Temp, 
+                     ckertype = "gaussian", 
+                     bwtype = "generalized_nn"))
+plot(npfit6)
+with(airquality2, points(Temp, Ozone))
+```
+
+To get R to automatically pick the bandwidth using cross-validation, you have two choices:
+
+```{r}
+npfit7 <- with(airquality2, 
+               npreg(Ozone ~ Temp, 
+                     ckertype = "gaussian", 
+                     bwmethod = "cv.aic"))
+plot(npfit7)
+with(airquality2, points(Temp, Ozone))
+npfit7$bw
+```
+
+OR
+
+```{r}
+npfit8 <- with(airquality2,
+               npreg(Ozone ~ Temp, 
+                     ckertype = "gaussian", 
+                     bwmethod = "cv.ls"))
+plot(npfit8)
+with(airquality2, points(Temp, Ozone))
+npfit8$bw
+```
+
+Note that these give very different results here - 2.92 and 1.31. The 1.31 is the default method used above (if you go back to check npfit, that's what we got). 
+
+Finally, you can try local linear kernel regression (using the kernels as weights in the local regression method) with:
+
+```{r}
+# can change bws, etc. 
+npfit9 <- with(airquality2, 
+               npreg(Ozone ~ Temp, bws = 1, 
+                     ckertype = "gaussian", 
+                     regtype = "ll")) 
+plot(npfit9)
+with(airquality2, points(Temp, Ozone))
+```
+
+Have fun as you explore the wide variety of different options for smoothing.
+
+## Data Sources
+
+Airquality data. Available in R with data(airquality). Help references Chambers, J. M., Cleveland, W. S., Kleiner, B. and Tukey, P. A. (1983) Graphical Methods for Data Analysis. Belmont, CA: Wadsworth.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

@@ -1,0 +1,377 @@
+---
+title: "Smoothing - Lab Activity - Solution"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(fANCOVA)
+library(np)
+```
+
+# Fitting Smoothers on Toy Data
+
+We'll tackle the *two humps* toy data set. 
+
+```{r}
+# Generate data with two humps
+set.seed(89)
+xh1 <- rnorm(75, 4, 2)
+xh2 <- rnorm(75, 7, 1)
+yh1 <- 15-6*(xh1-4)^2 + rnorm(75, 0, 5)
+yh2 <- -6*(xh2-7)^2 + rnorm(75, 0, 5)
+xh <- c(xh1[xh1 < 6], xh2[xh2 > 5])
+yh <- c(yh1[xh1 < 6], yh2[xh2 > 5])
+gf_point(yh ~ xh)
+thdata <- data.frame(xh, yh)
+```
+
+Let's fit the default local averaging smoother:
+
+```{r}
+cvsmooth <- with(thdata, supsmu(x = xh, y = yh, bass = 0, span = "cv"))
+with(thdata, plot(xh, yh))
+lines(cvsmooth)
+```
+
+How well do you like this fit? Is it too bumpy or too smooth in places?
+
+> SOLUTION:
+
+To us, it seems fine until the dense region of points, where it is way too bumpy. We'd prefer something smoother.
+
+
+Next, let's fit the default local regression smoother. To generate an automatic span, this uses loess.as instead of loess.
+
+```{r}
+# requires x to be sorted
+thdata2 <- arrange(thdata, xh) # sorts by x
+lrfit <- with(thdata2, loess.as(xh, yh, criterion = "gcv"))
+with(thdata2, plot(xh, yh))
+lines(lrfit$x, lrfit$fitted)
+```
+
+How well do you like this fit? Is it too bumpy or too smooth in places?
+
+> SOLUTION:
+
+This fit is more smooth than the local average fit. We like it. It may still be a tiny bit bumpy in the dense region. 
+
+
+This fit IS different from the local average fit, but only in one region. Where is that region? Which fit do you like better there?
+
+> SOLUTION:
+
+The region of dense points is where the major change is. We do like this fit better there.
+
+
+What is the span? Does that seem large or small to you?
+
+> SOLUTION:
+
+```{r}
+# Hint: try (lrfit$pars)$span
+(lrfit$pars)$span
+```
+
+The span is 0.19. So, we are using almost 1/5 of the data at each point to get the estimate (weighted though!). It's hard to judge whether or not that is reasonable here, but it seems fine. We'd expect to be over-smoothing with spans > 0.5, or so. 
+
+
+Finally, let's fit the default kernel smoother. We use an automatic bandwidth that is not variable across x, and the default kernel is Gaussian.
+
+```{r}
+npfit <- with(thdata2, npreg(yh ~ xh, bwmethod = "cv.aic"))
+plot(npfit)
+with(thdata2, points(xh, yh))
+npfit$bw
+```
+
+How does this fit compare to the other two? 
+
+> SOLUTION:
+
+This one does better in the dense region (in our opinion), but is otherwise a bit more bumpy than we might like. Maybe we can increase its span a tiny bit and still do well. That's what we would want to check out. 
+
+We can carefully plot all three solutions on top of each other. The kernel estimate is hardest to plot because of the way the output object is structured so we use that as the base plot.
+
+```{r}
+plot(npfit, ylim = c(-120, 30)) # kernel smoother in black
+with(thdata2, points(xh, yh)) # add data points
+lines(cvsmooth, col = 2) # add local averaging in red
+lines(lrfit$x, lrfit$fitted, col = 3) # add local regression in green
+```
+
+Based on the overlaid comparison, has your preference for a fitted model changed?
+
+> SOLUTION: 
+
+These look remarkably similar. We think the LOESS estimate (local regression) is best - smooth most places and not bumpy in either the left tail or the dense region. 
+
+# Real Data
+
+Next, we'll look at real data examples. Here, the idea will be that you should experiment some with changing spans/bandwidths, and for kernels, changing other options - like the kernel or kernel order.
+
+The States data set is about education and related statistics for the US. It's a built in dataset for R in the *carData* package.
+
+```{r}
+States <- carData::States
+# ?States # uncomment to access the help file
+pairs(States) # ggpairs is nicer if you load the GGally package
+```
+
+Examining the pairs scatterplot matrix, we can see several strong relationships, though not all are linear. Let's investigate the percent and dollars relationship in detail.
+
+```{r}
+gf_point(percent ~ dollars, data = States) # dollars is X
+```
+
+How would you describe this relationship?
+
+> SOLUTION:
+
+This relationship is not linear. It is fairly weak but curved almost like a sideways S. A linear regression model would not be appropriate. There is one outlier around 8 dollars that might cause issues. 
+
+
+Fit a local averaging smoother to the data set. Experiment with at least 3 different spans. Overlay your solutions. If you like, you could alter the bass parameter as well. 
+
+> SOLUTION:
+ 
+```{r}
+cvsmooth <- with(States, supsmu(x = dollars, y = percent, bass = 0, span = "cv"))
+smooth1 <- with(States, supsmu(x = dollars, y = percent, bass = 0, span = 0.5))
+smooth2 <- with(States, supsmu(x = dollars, y = percent, bass = 10, span = 0.1))
+with(States, plot(dollars, percent))
+lines(cvsmooth)
+lines(smooth1, col = 2)
+lines(smooth2, col = 3)
+```
+
+
+Which of your solutions do you prefer?
+
+> SOLUTION:
+
+Ick. None of these are particularly wonderful in our mind. The cv one jumps too much, but going to 0.5 is nearly a straight line. Using a lower span helps the top part but gets way too bumpy below. 
+
+
+Now try a local regression smoother. Again, try at least three spans, and overlay your solutions. If you wanted to, you could also change the *degree* to 2 instead of the default of 1. 
+
+> SOLUTION:
+
+```{r}
+States2 <- arrange(States, dollars) # sort by X
+
+lrfit <- with(States2, loess.as(dollars, percent, criterion = "gcv"))
+lrfit2 <- with(States2, loess.as(dollars, percent, criterion = "aicc"))
+lrfit3 <- with(States2, loess(percent ~ dollars, span = 0.3))
+lrfit4 <- with(States2, loess(percent ~ dollars, span = 0.6))
+
+with(States2, plot(dollars, percent))
+lines(lrfit$x, lrfit$fitted)
+lines(lrfit2$x, lrfit2$fitted, col = 2)
+lines(lrfit3$x, lrfit3$fitted, col = 3)
+lines(lrfit4$x, lrfit4$fitted, col = 4) # light blue
+```
+
+
+Which of these solutions do you prefer?
+
+> SOLUTION:
+
+We like the span 0.6 solution (light blue) the best. We are concerned that the smoothers are not able to do the large jump up around 5 dollars well. This is somewhat concerning, as it affects the fit. Still this region was expected to be slightly challenging due to the presence of multiple Ys for similar X's. 
+
+
+Finally, let's try kernel smoothers. First, try the three different kernels with the default automatic bandwidth. 
+
+> SOLUTION:
+
+```{r}
+npfit <- with(States2, npreg(percent ~ dollars, 
+                             bwmethod = "cv.aic"))
+plot(npfit)
+with(States2, points(dollars, percent))
+
+
+npfit2 <- with(States2, npreg(percent ~ dollars, 
+                              bwmethod = "cv.aic", 
+                              ckertype = "uniform"))
+plot(npfit2)
+with(States2, points(dollars, percent))
+
+
+npfit3 <- with(States2, npreg(percent ~ dollars, 
+                              bwmethod = "cv.aic", 
+                              ckertype = "epanechnikov"))
+plot(npfit3)
+with(States2, points(dollars, percent))
+```
+
+Do the kernel estimates behave in the same way as you'd expect from our work with density estimation (Hollander, Wolfe, and Chicken Chapter 12)?
+
+> SOLUTION:
+
+Yes, they behave as expected. The Gaussian and Epanechnikov kernels result in a smoother fit than the uniform kernel.
+
+You should try experimenting with setting your own bandwidth or using a variable bandwidth, with your choice of kernel. (You could also change the order.)
+
+> SOLUTION:
+
+```{r}
+npfit <- with(States2, npreg(percent ~ dollars, 
+                             bwtype = "generalized_nn"))
+plot(npfit)
+with(States2, points(dollars, percent))
+
+npfit <- with(States2, npreg(percent ~ dollars, 
+                             bws = 0.25))
+plot(npfit)
+with(States2, points(dollars, percent))
+```
+
+
+Of all your solutions, which do you prefer here?
+
+> SOLUTION:
+
+Several solutions were tried. The best one we found is the one above with bandwidth 0.25. It still doesn't seem to be able to do the drastic increase aspect though. 
+
+
+Next, you get to compare fits between the pair - SATV and percent and the pair - SATM and percent. Make *percent* the X in each case.
+
+Look at both these relationships (without fits).
+
+> SOLUTION:
+
+```{r}
+gf_point(SATV ~ percent, data = States)
+gf_point(SATM ~ percent, data = States)
+```
+
+How would you describe the relationships?
+
+> SOLUTION:
+
+Both relationships are curvilinear, decreasing (negative) quadratics. They display modest association. 
+
+Do the relationships make sense to you? Can you explain what is going on?
+
+> SOLUTION:
+
+Yes, these relationships make sense. In areas where more students take the SATs (higher percent), we'd expect the average scores to decrease, because not just elite students are taking the exam. In areas where few students take the exam, the students taking it are likely to be stronger students wanting to use it for college admissions. Thus, at low percents, we'd expect average scores to be higher. 
+
+
+Find your preferred smoothing estimate of the relationship in both cases, using each of the three smoothers we learned about (i.e. one local averaging smoother, one local regression smoother, and one kernel smoother). You should try out different options to see what you like. 
+
+> SOLUTION:
+
+```{r}
+# for SATV
+States3 <- arrange(States, percent)
+
+lavg <- with(States3, supsmu(x = percent, y = SATV, bass = 0, span = 0.5))
+with(States3, plot(percent, SATV))
+lines(lavg)
+
+lrfit <- with(States3, loess(SATV ~ percent, span = 0.6))
+with(States3, plot(percent, SATV))
+lines(lrfit$x, lrfit$fitted)
+
+npfit <- with(States3, npreg(SATV ~ percent, bws = 7))
+plot(npfit)
+with(States3, points(percent, SATV))
+```
+
+
+```{r}
+# for SATM
+lavg <- with(States3, supsmu(x = percent, y = SATM, bass = 0, span = 0.4))
+with(States3, plot(percent, SATM))
+lines(lavg)
+
+lrfit <- with(States3, loess(SATM ~ percent, span = 0.6))
+with(States3, plot(percent, SATM))
+lines(lrfit$x, lrfit$fitted)
+
+npfit <- with(States3, npreg(SATM ~ percent))
+plot(npfit)
+with(States3, points(percent, SATM))
+```
+
+Compare your solutions. Are the relationships similar or different based on the fits?
+
+> SOLUTION:
+
+
+The overall shapes we see for either SATV or SATM are similar, so the relationships seem similar. You may be able to make them more or less similar by changing parameters, but the overall shapes seem to agree, to us. The kernel estimates seem to be a bit more bumpy, than the others though. It is also interesting to note that those bandwidths can go over 1, if you use the `bws` option.
+
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how smoothing is used.
+
+Use Google Scholar and do a search for "smoothing" or "smoothing method" or "LOESS" (any method specifically) and an application area of interest to you. For example, search for '"smoothing" archaeology' to look for applications of smoothing in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+Note that when searching for "smoothing", you may find articles related to kernel density estimation. Adding "regression" to or specifying "LOESS" in your search may help eliminate that problem. 
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Calderon-Anyosa, Renzo JC, and Jay S. Kaufman, "Impact of COVID-19 lockdown policy on homicide, suicide, and motor vehicle deaths in Peru," Preventive medicine, 143, 2021.
+
+N. Wasmund, S. Uhlig, "Phytoplankton trends in the Baltic Sea, ICES Journal of Marine Science," Volume 60, Issue 2, 2003, Pages 177–186.
+
+Kollath, Daniel R., Joseph R. Mihaljevic, and Bridget M. Barker, "PM10 and other climatic variables are important predictors of seasonal variability of coccidioidomycosis in Arizona," Microbiology Spectrum, 10.2, 2022.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Answers will vary. 
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+Answers will vary. 
+
+What was smoothing used for in the article? Describe as best you can. What relationship was being studied?  
+
+> SOLUTION:
+
+Answers will vary. 
+
+Does the article state why smoothing was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Answers will vary. 
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+Answers will vary. 
+
+## Data Sources
+
+States data is available in the carData package in R with carData::States. Reference from help file is United States (1992) Statistical Abstract of the United States. Bureau of the Census.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 

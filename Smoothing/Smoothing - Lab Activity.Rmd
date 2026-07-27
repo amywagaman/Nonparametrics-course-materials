@@ -1,0 +1,275 @@
+---
+title: "Smoothing - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(fANCOVA)
+library(np)
+```
+
+# Fitting Smoothers on Toy Data
+
+We'll tackle the *two humps* toy data set. 
+
+```{r}
+# Generate data with two humps
+set.seed(89)
+xh1 <- rnorm(75, 4, 2)
+xh2 <- rnorm(75, 7, 1)
+yh1 <- 15-6*(xh1-4)^2 + rnorm(75, 0, 5)
+yh2 <- -6*(xh2-7)^2 + rnorm(75, 0, 5)
+xh <- c(xh1[xh1 < 6], xh2[xh2 > 5])
+yh <- c(yh1[xh1 < 6], yh2[xh2 > 5])
+gf_point(yh ~ xh)
+thdata <- data.frame(xh, yh)
+```
+
+Let's fit the default local averaging smoother:
+
+```{r}
+cvsmooth <- with(thdata, supsmu(x = xh, y = yh, bass = 0, span = "cv"))
+with(thdata, plot(xh, yh))
+lines(cvsmooth)
+```
+
+How well do you like this fit? Is it too bumpy or too smooth in places?
+
+> SOLUTION:
+
+
+Next, let's fit the default local regression smoother. To generate an automatic span, this uses loess.as instead of loess.
+
+```{r}
+# requires x to be sorted
+thdata2 <- arrange(thdata, xh) # sorts by x
+lrfit <- with(thdata2, loess.as(xh, yh, criterion = "gcv"))
+with(thdata2, plot(xh, yh))
+lines(lrfit$x, lrfit$fitted)
+```
+
+How well do you like this fit? Is it too bumpy or too smooth in places?
+
+> SOLUTION:
+
+This fit IS different from the local average fit, but only in one region. Where is that region? Which fit do you like better there?
+
+> SOLUTION:
+
+What is the span? Does that seem large or small to you?
+
+> SOLUTION:
+
+```{r}
+# Hint: try (lrfit$pars)$span
+```
+
+Finally, let's fit the default kernel smoother. We use an automatic bandwidth that is not variable across x, and the default kernel is Gaussian.
+
+```{r}
+npfit <- with(thdata2, npreg(yh ~ xh, bwmethod = "cv.aic"))
+plot(npfit)
+with(thdata2, points(xh, yh))
+npfit$bw
+```
+
+How does this fit compare to the other two? 
+
+> SOLUTION:
+
+
+We can carefully plot all three solutions on top of each other. The kernel estimate is hardest to plot because of the way the output object is structured so we use that as the base plot.
+
+```{r}
+plot(npfit, ylim = c(-120, 30)) # kernel smoother in black
+with(thdata2, points(xh, yh)) # add data points
+lines(cvsmooth, col = 2) # add local averaging in red
+lines(lrfit$x, lrfit$fitted, col = 3) # add local regression in green
+```
+
+Based on the overlaid comparison, has your preference for a fitted model changed?
+
+> SOLUTION: 
+
+
+# Real Data
+
+Next, we'll look at real data examples. Here, the idea will be that you should experiment some with changing spans/bandwidths, and for kernels, changing other options - like the kernel or kernel order.
+
+The States data set is about education and related statistics for the US. It's a built in dataset for R in the `carData` package.
+
+```{r}
+States <- carData::States
+# ?States # uncomment to access the help file
+pairs(States) # ggpairs is nicer if you load the GGally package
+```
+
+Examining the pairs scatterplot matrix, we can see several strong relationships, though not all are linear. Let's investigate the percent and dollars relationship in detail.
+
+```{r}
+gf_point(percent ~ dollars, data = States) # dollars is X
+```
+
+How would you describe this relationship?
+
+> SOLUTION:
+
+
+Fit a local averaging smoother to the data set. Experiment with at least 3 different spans. Overlay your solutions. If you like, you could alter the bass parameter as well. 
+
+> SOLUTION:
+ 
+```{r}
+
+```
+
+
+Which of your solutions do you prefer?
+
+> SOLUTION:
+
+
+Now try a local regression smoother. Again, try at least three spans, and overlay your solutions. If you wanted to, you could also change the `degree` to 2 instead of the default of 1. 
+
+> SOLUTION:
+
+```{r}
+States2 <- arrange(States, dollars) # sort by X
+
+```
+
+Which of these solutions do you prefer?
+
+> SOLUTION:
+
+
+Finally, let's try kernel smoothers. First, try the three different kernels with the default automatic bandwidth. 
+
+> SOLUTION:
+
+
+```{r}
+
+```
+
+Do the kernel estimates behave in the same way as you'd expect from our work with density estimation (Hollander, Wolfe, and Chicken Chapter 12)?
+
+> SOLUTION:
+
+
+
+You should try experimenting with setting your own bandwidth or using a variable bandwidth, with your choice of kernel. (You could also change the order.)
+
+> SOLUTION:
+
+```{r}
+
+```
+
+Of all your solutions, which do you prefer here?
+
+> SOLUTION:
+
+
+
+Next, you get to compare fits between the pair - SATV and percent and the pair - SATM and percent. Make *percent* the X in each case.
+
+Look at both these relationships (without fits).
+
+> SOLUTION:
+
+```{r}
+
+```
+
+How would you describe the relationships?
+
+> SOLUTION:
+
+
+
+Do the relationships make sense to you? Can you explain what is going on?
+
+> SOLUTION:
+
+
+
+Find your preferred smoothing estimate of the relationship in both cases, using each of the three smoothers we learned about (i.e. one local averaging smoother, one local regression smoother, and one kernel smoother). You should try out different options to see what you like. 
+
+> SOLUTION:
+
+```{r}
+# for SATV
+```
+
+
+```{r}
+# for SATM
+```
+
+Compare your solutions. Are the relationships similar or different based on the fits?
+
+> SOLUTION:
+
+## Nonparametric Methods in Literature
+
+As you learn new nonparametric methods, you are likely curious about how they are used in practice. Specifically, how are they used in application areas of interest to you? Let's explore how smoothing is used.
+
+Use Google Scholar and do a search for "smoothing" or "smoothing method" or "LOESS" (any method specifically) and an application area of interest to you. For example, search for '"smoothing" archaeology' to look for applications of smoothing in archaeology. (If the subject area has multiple words, you may want to put quotes around it as well.) Choose an article that pops up from your search that is interesting to you (more recent than 2010 would be best, if possible) and answer the questions below.
+
+Note that when searching for "smoothing", you may find articles related to kernel density estimation. Adding "regression" to or specifying "LOESS" in your search may help eliminate that problem. 
+
+If you are having issues picking an application area or choosing an article, some potential articles are provided below. Applications do not need to be in journals in statistics!
+
+Calderon-Anyosa, Renzo JC, and Jay S. Kaufman, "Impact of COVID-19 lockdown policy on homicide, suicide, and motor vehicle deaths in Peru," Preventive medicine, 143, 2021.
+
+N. Wasmund, S. Uhlig, "Phytoplankton trends in the Baltic Sea, ICES Journal of Marine Science," Volume 60, Issue 2, 2003, Pages 177–186.
+
+Kollath, Daniel R., Joseph R. Mihaljevic, and Bridget M. Barker, "PM10 and other climatic variables are important predictors of seasonal variability of coccidioidomycosis in Arizona," Microbiology Spectrum, 10.2, 2022.
+
+
+Provide a citation for your article. Google Scholar should be able to provide a complete citation for you to copy/paste.
+
+> SOLUTION:
+
+Summarize what the article is about in a few sentences.
+
+> SOLUTION:
+
+What was smoothing used for in the article? Describe as best you can. What relationship was being studied?  
+
+> SOLUTION:
+
+Does the article state why smoothing was used? If so, what reason do they give?
+
+> SOLUTION:
+
+Are any other statistical procedures mentioned in the paper, that you can tell? If so, what else is mentioned?
+
+> SOLUTION: 
+
+
+## Data Sources
+
+States data is available in the carData package in R with carData::States. Reference from help file is United States (1992) Statistical Abstract of the United States. Bureau of the Census.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
