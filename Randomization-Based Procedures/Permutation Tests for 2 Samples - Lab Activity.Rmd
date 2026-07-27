@@ -1,0 +1,259 @@
+---
+title: "Permutation Tests for 2 Samples - Lab Activity"
+author: "B.A. Hartlaub and A.S. Wagaman"
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r setup, include = FALSE} 
+library(NSM3)
+library(tidyverse)
+library(mosaic) 
+library(exactRankTests) # may need to swap over to coin
+library(GGally)
+```
+
+
+In this lab, you will get to try a few examples of permutation tests.
+
+Example 1 is in the examples file for your reference. 
+
+## Example 2 - Machine Repair
+
+An automatic refill machine (16 oz expected) just underwent repairs. Here are the reported oz for sampled beverages before and after the repairs.
+
+```{r}
+before <- c(16.55, 15.36, 15.94, 16.43, 16.01)
+after <- c(16.05, 15.98, 16.10, 15.88, 15.91)
+```
+
+Run a `perm.test` command to test whether or not there was a shift in means between the before/after repair amounts of liquid put into 16 oz beverages. Obtain a 90 percent CI for the difference in means.
+
+> SOLUTION:       
+
+```{r}
+
+```
+
+Other methods, including the Wilcoxon Rank Sum procedure, do not find enough evidence to conclude that there is a difference in centers here. Do you reach the same conclusion here?
+
+> SOLUTION:       
+
+
+
+How many possible permutations were there for this data set?
+
+> SOLUTION:       
+
+```{r}
+
+```
+
+
+Here is what a simulated distribution looks like. 
+
+```{r}
+set.seed(225)
+mean(before)-mean(after)
+runs <- 1000
+diff <- rep(0, runs)
+sampledata <- c(before, after)
+total <- sum(sampledata)
+
+for(i in 1:runs){
+  sampley <- sample(sampledata, 5)
+  sumy <- sum(sampley)
+  diff[i] <- (total-sumy)/5-sumy/5
+}
+
+df <- data.frame(diff)
+
+ggplot(data = df, aes(x = diff)) + 
+  geom_density() +
+  geom_vline(xintercept = 0.074, color = "red") +
+  labs(title = "Permutation Density of Difference in Means")
+```
+
+Our observed value is very near the middle, which is why we did not have evidence to conclude there was a shift in the distributions. We should obtain the same result here. 
+
+Again, you can get empirical p-values (meaning estimated in this way) using:
+
+```{r}
+2*pdata(~ diff, 0.074, lower.tail = FALSE, data = df)
+# what alpha does this correspond to?
+qdata(~ diff, c(0.05, 0.95), data = df) # 5% and 95% bounds
+```
+
+You would reject the null hypothesis if you had observed a sample difference in means that fell outside the provided bounds. Where does 0.074 fall? Does this confirm that you do not reject the null hypothesis?
+
+> SOLUTION:       
+
+
+
+## Example 3 - Iris Data
+
+The iris data set is a fairly famous data set. You can read about it if you ask for help about the data set. 
+
+```{r}
+data(iris)
+# help(iris)
+names(iris)
+```
+
+The data set contains measurements of 4 different variables for three different species of Iris, 50 observations per species. Here, we'll break down the data set into one per species, to help with running the perm.test function later.
+
+```{r}
+setosa <- filter(iris, Species == "setosa")
+versicolor <- filter(iris, Species == "versicolor")
+virginica <- filter(iris, Species == "virginica")
+```
+
+A quick look at the data set reveals some species may have similar traits and others not.
+
+```{r}
+ggpairs(iris, columns = 1:4, aes(color = Species))
+```
+
+Let's examine a few different questions about this data set using permutation tests.
+
+## Do Versicolor and Virginica have different mean Sepal widths?
+
+How many possible permutations would have to be listed to cover them all?
+
+> SOLUTION:       
+
+```{r}
+
+```
+
+Run a permutation test to address the question of interest.
+
+```{r}
+perm.test(versicolor$Sepal.Width, virginica$Sepal.Width)
+```
+
+What do you conclude?
+
+> SOLUTION:       
+
+
+
+Here is what the distribution of simulated differences in means would look like:
+
+```{r}
+mean(versicolor$Sepal.Width)-mean(virginica$Sepal.Width)
+
+set.seed(225)
+runs <- 10000
+diff <- rep(0, runs)
+sampledata <- c(versicolor$Sepal.Width, virginica$Sepal.Width)
+total <- sum(sampledata)
+
+for(i in 1:runs){
+  sampley <- sample(sampledata, 50)
+  sumy <- sum(sampley)
+  diff[i] <- (total-sumy)/50-sumy/50
+}
+
+df <- data.frame(diff)
+
+ggplot(data = df, aes(x = diff)) + 
+  geom_density() +
+  geom_vline(xintercept = 0.204, color = "red") +
+  labs(title = "Permutation Density of Difference in Means")
+```
+
+Obtain an empirical p-value for your test procedure.
+
+> SOLUTION:       
+
+```{r}
+
+```
+
+Obtain an empirical 0.05 lower-tail cutoff for a rejection region based on the simulation.
+
+> SOLUTION:       
+
+```{r}
+
+```
+
+Do your findings confirm rejecting the null hypothesis?
+
+> SOLUTION:       
+
+
+Use permutation procedures to address the following questions:
+
+## How much difference is there between the mean of setosa sepal length compared to versicolor's sepal length?
+
+(Think: Is a test or CI more useful to address this question?)
+
+> SOLUTION:       
+
+```{r}
+
+```
+
+
+## Is there significant evidence that the versicolor mean petal length is different from that of virginica's?
+
+> SOLUTION:       
+
+```{r}
+
+```
+
+
+## Is there a significant difference in the mean of Setosa sepal width and mean of virginica sepal width using only a subset of the observations as the data source? Obtain an exact p-value/conclusion by hand.
+
+Here are the first 3 setosa observations, and the first 2 virginica observations. Note: there are only TEN possible permutations. Each permutation is equally likely to occur. (You may want scratch paper.)
+
+```{r}
+setosa[1:3, ]
+virginica[1:2, ]
+choose(5, 3)
+```
+
+> SOLUTION:       
+
+```{r}
+
+```
+
+
+## Is there a significant difference in the mean of setosa sepal width and mean of virginica sepal width using all observations from both species? Do you make a different conclusion than above?
+
+> SOLUTION:       
+
+```{r}
+
+```
+
+
+## Data Sources
+
+Machine Repair data was simulated.
+
+Iris data. Available in R with data(iris). Original sources referenced in R help: 
+
+Fisher, R. A. (1936) The use of multiple measurements in taxonomic problems. Annals of Eugenics, 7, Part II, 179–188. doi:10.1111/j.1469-1809.1936.tb02137.x.
+
+Anderson, Edgar (1935). The irises of the Gaspe Peninsula, Bulletin of the American Iris Society, 59, 2–5.
+
+## Standard Reference 
+
+These materials were created for use in an undergraduate nonparametrics course. Where provided, textbook references refer to Nonparametric Statistical Methods (3rd Edition) by Hollander, Wolfe, and Chicken. Notation is chosen to be consistent with that text. However, materials may be used independently of the textbook. 
+
+## License
+
+This work is protected by creative commons license CC BY-NC-SA. 
